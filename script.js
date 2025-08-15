@@ -1324,7 +1324,7 @@ function addTaskbarIcon(title) {
       imgSrc = 'goodtrip.png';
       break;
     case 'Store':
-      imgSrc = 'https://img.icons8.com/windows/32/shopping-bag.png';
+      imgSrc = 'storeicon.png';
       break;
     case 'Music':
       imgSrc = 'cdicon.gif';
