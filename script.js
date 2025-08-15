@@ -1423,8 +1423,6 @@ function openWindow(title) {
     `;
     document.head.appendChild(style);
   }
-
-
 }
 
 function bringToFront(el) {
@@ -2012,6 +2010,49 @@ function renderAlbumWindow(config) {
       </div>
     </div>
   `;
+
+  // Inject mobile-specific stacking rules for this album window only (scoped by title)
+  (function applyMobileAlbumLayout() {
+    const style = document.createElement('style');
+    style.textContent = `
+      @media (max-width: 768px) {
+        .goodtrip-layout[data-title="${config.title}"] {
+          flex-direction: column !important;
+          height: auto !important;
+          max-height: none !important;
+        }
+
+        .goodtrip-left[data-title="${config.title}"] {
+          width: 100% !important;
+          max-width: 100% !important;
+          min-width: 100% !important;
+          height: fit-content !important;
+          min-height: 200px !important;
+          flex-shrink: 0;
+          overflow-y: auto;
+          overflow-x: hidden;
+          padding-bottom: 20px;
+        }
+
+        .window[data-title="${config.title}"] .goodtrip-right {
+          width: 100% !important;
+          height: fit-content !important;
+          min-height: 200px !important;
+          flex-grow: 1;
+          overflow-y: auto;
+          overflow-x: hidden;
+          padding-top: 20px;
+        }
+
+        .window[data-title="${config.title}"] .left-inner {
+          padding: 10px;
+          overflow-y: auto;
+          height: 100%;
+        }
+      }
+    `;
+    document.head.appendChild(style);
+  })();
 
   win.classList.add('no-padding');
 
