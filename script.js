@@ -90,17 +90,17 @@ function openWindow(title) {
         .files-left { border-right: 1px solid rgba(0,0,0,0.15); background: linear-gradient(#f8f8f8, #e9e9e9); padding: 6px 0; overflow: auto; }
         .files-right { display: grid; grid-template-rows: 1fr auto; background: #fff; }
 
-        /* Explorer-like tree */
-        .tree { list-style: none; margin: 0; padding: 4px 0 12px 0; }
-        .tree-item { display: block; }
-        .tree-row { display: flex; align-items: center; gap: 8px; padding: 4px 8px; border-radius: 4px; cursor: default; user-select: none; }
-        .tree-row:hover { background: rgba(51,153,255,0.12); }
-        .tree-row.selected { background: rgba(51,153,255,0.18); outline: 1px solid rgba(51,153,255,0.6); }
-        .twisty { width: 12px; display: inline-flex; align-items: center; justify-content: center; font-size: 10px; color: #333; }
-        .icon { width: 18px; height: 18px; object-fit: contain; }
-        .label { font-size: 13px; color: #222; }
-        .children { margin: 0; padding-left: 18px; list-style: none; display: none; }
-        .expanded > .children { display: block; }
+        /* Explorer-like tree (scoped to left panel to avoid global clashes) */
+        .files-left .tree { list-style: none; margin: 0; padding: 4px 0 12px 0; }
+        .files-left .tree-item { display: block; }
+        .files-left .tree-row { display: flex; align-items: center; gap: 8px; padding: 4px 8px; border-radius: 4px; cursor: default; user-select: none; }
+        .files-left .tree-row:hover { background: rgba(51,153,255,0.12); }
+        .files-left .tree-row.selected { background: rgba(51,153,255,0.18); outline: 1px solid rgba(51,153,255,0.6); }
+        .files-left .twisty { width: 12px; display: inline-flex; align-items: center; justify-content: center; font-size: 10px; color: #333; }
+        .files-left .icon { width: 18px; height: 18px; object-fit: contain; }
+        .files-left .label { font-size: 13px; color: #222; }
+        .files-left .children { margin: 0; padding-left: 18px; list-style: none; display: none; }
+        .files-left .expanded > .children { display: block; }
 
         .preview { display: grid; grid-template-rows: 1fr auto; min-height: 0; }
         .artwork-wrap { display: flex; align-items: center; justify-content: center; padding: 12px; border-bottom: 1px solid rgba(0,0,0,0.1); }
