@@ -70,13 +70,166 @@ function openWindow(title) {
   win.dataset.title = title;
 
   if (title === "Music") {
+    // Make this window larger to accommodate the grid (responsive on mobile)
+    if (isMobile) {
+      win.style.width = '95vw';
+      win.style.height = '90vh';
+      win.style.maxWidth = '';
+      win.style.maxHeight = '';
+    } else {
+      win.style.width = '900px';
+      win.style.height = '600px';
+      win.style.maxWidth = 'none';
+      win.style.maxHeight = 'none';
+    }
+
     content.innerHTML = `
-      <iframe style="border: 0; width: 100%; height: 120px;" 
-        src="https://bandcamp.com/EmbeddedPlayer/album=573564593/size=large/bgcol=ffffff/linkcol=0687f5/tracklist=false/artwork=small/transparent=true/" 
-        seamless>
-        <a href="https://lewdunit.bandcamp.com/album/demodisc01">demodisc01 by Lew_dunit</a>
-      </iframe>
+      <style>
+        .music-container {
+          padding: 20px;
+          position: relative;
+          font-family: inherit;
+        }
+        .music-sections {
+          display: grid;
+          grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+          gap: 24px;
+          max-width: 900px;
+          margin: 0 auto;
+        }
+        .music-section {
+          background: transparent;
+          padding: 8px 0;
+          text-align: center;
+          transition: transform 0.2s ease;
+          cursor: pointer;
+          border: none;
+        }
+        .music-section:hover { transform: translateY(-2px); }
+        .music-section:hover .music-icon { filter: drop-shadow(0 0 10px rgba(51,153,255,0.9)); }
+        .music-section:hover .music-title { color: #3399ff; text-shadow: 0 0 6px rgba(51,153,255,0.6); }
+        .music-icon {
+          width: 120px; height: 120px; margin: 0 auto 16px auto; display: block;
+          filter: drop-shadow(0 2px 4px rgba(0,0,0,0.2));
+          object-fit: cover;
+        }
+        .music-title { font-size: 20px; font-weight: bold; margin-bottom: 8px; color: #333; }
+        .music-section-content {}
+        .music-section-header { display: flex; align-items: center; gap: 15px; padding: 0 20px; margin-bottom: 20px; }
+        .music-back-button {
+          background: linear-gradient(to bottom, #e8e8e8, #d0d0d0);
+          border: 1px solid #999; color: #333; padding: 8px 12px; border-radius: 4px;
+          cursor: pointer; font-size: 12px; transition: background 0.2s ease;
+        }
+        .music-back-button:hover { background: linear-gradient(to bottom, #f0f0f0, #e0e0e0); }
+        #music-section-title { margin: 0; color: #333; font-size: 24px; }
+        #music-section-body { color: #333; line-height: 1.6; padding: 0 20px; }
+        .release-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 20px; margin-top: 20px; }
+        .release-item { background: white; border: 1px solid #ddd; border-radius: 8px; padding: 15px; text-align: center; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+        .release-cover { width: 100%; height: 150px; background: #f5f5f5; border-radius: 4px; margin-bottom: 10px; display:flex; align-items:center; justify-content:center; overflow:hidden; }
+        .release-cover img { max-width: 100%; max-height: 100%; display:block; }
+        .release-actions { display:flex; gap:8px; justify-content:center; margin-top:8px; }
+        .release-actions a { font-size:12px; color:#0366d6; text-decoration:none; }
+      </style>
+
+      <div class="music-container">
+        <div class="music-sections" id="music-main-sections">
+          <div class="music-section" onclick="openWindow('demodisc_01')">
+            <img src="demodisccover.webp" alt="demodisc_01" class="music-icon" />
+            <div class="music-title">demodisc_01</div>
+          </div>
+          <div class="music-section" onclick="openMusicSection('apple')">
+            <img src="applecover.webp" alt="apple" class="music-icon" />
+            <div class="music-title">apple</div>
+          </div>
+          <div class="music-section" onclick="openWindow('GOODTRIP')">
+            <img src="goodtrip.webp" alt="GOODTRIP" class="music-icon" />
+            <div class="music-title">GOODTRIP</div>
+          </div>
+          <div class="music-section" onclick="openMusicSection('iso')">
+            <img src="isocover.webp" alt="iso" class="music-icon" />
+            <div class="music-title">iso</div>
+          </div>
+        </div>
+
+        <div class="music-section-content" id="music-section-content" style="display:none;">
+          <div class="music-section-header">
+            <button class="music-back-button" onclick="showMainMusic()">← Back to Music</button>
+            <h2 id="music-section-title"></h2>
+          </div>
+          <div id="music-section-body"></div>
+        </div>
+      </div>
     `;
+
+    // Use the window's scrollbar and remove default padding
+    win.classList.add('no-padding');
+
+    // Handlers similar to Store, but scoped to this window's content
+    function showMainMusic() {
+      const main = content.querySelector('#music-main-sections');
+      const section = content.querySelector('#music-section-content');
+      if (main && section) { main.style.display = 'grid'; section.style.display = 'none'; }
+    }
+
+    function openMusicSection(key) {
+      const main = content.querySelector('#music-main-sections');
+      const section = content.querySelector('#music-section-content');
+      const titleEl = content.querySelector('#music-section-title');
+      const bodyEl = content.querySelector('#music-section-body');
+      if (!main || !section || !titleEl || !bodyEl) return;
+      main.style.display = 'none';
+      section.style.display = 'block';
+
+      // Populate per release
+      if (key === 'demodisc_01') {
+        titleEl.textContent = 'demodisc_01';
+        bodyEl.innerHTML = `
+          <div class="release-grid">
+            <div class="release-item">
+              <div class="release-cover"><img src="demodisccover.webp" alt="demodisc_01 cover"/></div>
+              <div>demodisc_01</div>
+              <div class="release-actions">
+                <a href="#" onclick="openAlbumModal('demodisccover-hq.png', 'crackers.mp3'); return false;">View</a>
+              </div>
+            </div>
+          </div>`;
+      } else if (key === 'apple') {
+        titleEl.textContent = 'apple';
+        bodyEl.innerHTML = `
+          <div class="release-grid">
+            <div class="release-item">
+              <div class="release-cover"><img src="applecover.webp" alt="apple cover"/></div>
+              <div>apple</div>
+            </div>
+          </div>`;
+      } else if (key === 'GOODTRIP') {
+        titleEl.textContent = 'GOODTRIP';
+        bodyEl.innerHTML = `
+          <div class="release-grid">
+            <div class="release-item">
+              <div class="release-cover"><img src="goodtrip.webp" alt="GOODTRIP cover"/></div>
+              <div>GOODTRIP</div>
+              <div class="release-actions">
+                <a href="#" onclick="openWindow('GOODTRIP'); return false;">Open GOODTRIP Window</a>
+              </div>
+            </div>
+          </div>`;
+      } else if (key === 'iso') {
+        titleEl.textContent = 'iso';
+        bodyEl.innerHTML = `
+          <div class="release-grid">
+            <div class="release-item">
+              <div class="release-cover"><img src="isocover.webp" alt="iso cover"/></div>
+              <div>iso</div>
+            </div>
+          </div>`;
+      }
+    }
+
+    // Expose handlers for inline onclick inside this window scope
+    window.openMusicSection = openMusicSection;
+    window.showMainMusic = showMainMusic;
   } else if (title === "Recycle Bin") {
     // Make this window larger to accommodate content (responsive on mobile)
     if (isMobile) {
@@ -600,6 +753,40 @@ function openWindow(title) {
       });
       obs.observe(document.body, { childList: true, subtree: true });
     })();
+  } else if (title === "demodisc_01") {
+    // Demodisc window: simple cover + audio player
+    if (isMobile) {
+      win.style.width = '90vw';
+      win.style.height = '80vh';
+    } else {
+      win.style.width = '900px';
+      win.style.height = '600px';
+    }
+
+    content.innerHTML = `
+      <style>
+        .demodisc-wrap { height: 100%; display: flex; flex-direction: column; gap: 16px; padding: 16px; box-sizing: border-box; }
+        .demodisc-head { display:flex; align-items:center; gap:14px; }
+        .demodisc-head img { width:72px; height:72px; object-fit:cover; border-radius:6px; box-shadow:0 2px 6px rgba(0,0,0,0.2); }
+        .demodisc-title { font-size:20px; font-weight:700; }
+        .demodisc-body { flex:1; display:flex; align-items:center; justify-content:center; }
+        .demodisc-cover { max-width: 85%; max-height: 80%; border-radius:8px; box-shadow:0 6px 18px rgba(0,0,0,0.25); }
+        .demodisc-controls { display:flex; gap:12px; align-items:center; justify-content:center; }
+      </style>
+      <div class="demodisc-wrap">
+        <div class="demodisc-head">
+          <img src="demodisccover-hq.png" alt="demodisc_01"/>
+          <div class="demodisc-title">demodisc_01</div>
+        </div>
+        <div class="demodisc-body">
+          <img src="demodisccover-hq.png" class="demodisc-cover" alt="demodisc_01 cover"/>
+        </div>
+        <div class="demodisc-controls">
+          <audio controls src="crackers.mp3" style="width: min(720px, 100%);"></audio>
+        </div>
+      </div>
+    `;
+
   } else if (title === "GOODTRIP") {
     content.innerHTML = `
       <style>
@@ -968,7 +1155,7 @@ function openWindow(title) {
                 <img src="spotify-icon.webp" alt="Spotify" class="platform-icon" />
               </a>
               <a href="https://music.apple.com/gb/album/goodtrip/1785658586" target="_blank">
-                <img src="applemusic-icon.png" alt="Apple Music" class="platform-icon" />
+                <img src="applemusic-logo.png" alt="Apple Music" class="platform-icon" />
               </a>
               <a href="https://bandcamp.com" target="_blank">
                 <img src="bandcamp-icon.png" alt="Bandcamp" class="platform-icon" />
@@ -1255,18 +1442,19 @@ function openWindow(title) {
     content.innerHTML = `<p>This is the ${title} window.</p>`;
   }
 
-  // Set window size based on title (do not override Recycle Bin's explicit size set earlier)
-  if (title === "Recycle Bin") {
-    // keep 1100x720 from the Recycle Bin block above
-  } else if (title === "Store") {
-    win.style.width = isMobile ? '85vw' : '700px';
-    win.style.height = isMobile ? '80vh' : '500px';
-  } else if (title === "GOODTRIP") {
-    win.style.width = isMobile ? '88vw' : '800px';
-    win.style.height = isMobile ? '70vh' : '500px';
-  } else {
-    win.style.width = isMobile ? '80vw' : '300px';
-    win.style.height = isMobile ? '50vh' : '200px';
+  // Set default window size only if not already set by a window-specific block above
+  // This avoids overriding sizes for windows like Music and Recycle Bin.
+  if (!win.style.width || !win.style.height) {
+    if (title === "Store") {
+      win.style.width = isMobile ? '85vw' : '700px';
+      win.style.height = isMobile ? '80vh' : '500px';
+    } else if (title === "GOODTRIP") {
+      win.style.width = isMobile ? '92vw' : '960px';
+      win.style.height = isMobile ? '80vh' : '640px';
+    } else {
+      win.style.width = isMobile ? '80vw' : '300px';
+      win.style.height = isMobile ? '50vh' : '200px';
+    }
   }
 
   const windowWidth = parseInt(win.style.width);
@@ -1733,7 +1921,7 @@ window.addEventListener('load', () => {
   document.body.classList.add('loaded');
 });
 
-function openAlbumModal() {
+function openAlbumModal(coverSrc, downloadSrc) {
   const modal = document.getElementById('album-modal');
   if (!modal) return;
 
@@ -1753,18 +1941,31 @@ function openAlbumModal() {
   const downloadBtn = modal.querySelector('.download-btn');
   
   if (imgWrapper && downloadBtn) {
-    // Use the same image source for both display and download
-    const imgSrc = 'goodtripcover-hq.jpg';
+    // Determine sources
+    const defaultCover = 'goodtripcover-hq.jpg';
+    const imgSrc = coverSrc || defaultCover;
+    const dlSrc = downloadSrc || imgSrc;
     imgWrapper.src = imgSrc;
-    downloadBtn.href = imgSrc;
-    downloadBtn.download = 'goodtripcover-hq.jpg';
+    downloadBtn.href = dlSrc;
+    try {
+      const a = new URL(dlSrc, window.location.href);
+      const base = (a.pathname.split('/').pop() || 'download');
+      downloadBtn.download = base;
+    } catch {
+      downloadBtn.download = 'download';
+    }
     
     // Add click handler to ensure proper download
     downloadBtn.addEventListener('click', (e) => {
       e.preventDefault();
       const link = document.createElement('a');
-      link.href = imgSrc;
-      link.download = 'goodtripcover-hq.jpg';
+      link.href = dlSrc;
+      try {
+        const a = new URL(dlSrc, window.location.href);
+        link.download = (a.pathname.split('/').pop() || 'download');
+      } catch {
+        link.download = 'download';
+      }
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);

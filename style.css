@@ -96,8 +96,9 @@ body, html {
   display: flex;
   flex-direction: column;
   z-index: 9000;
-  max-width: 95vw;
-  max-height: 95vh;
+  /* allow windows to exceed 95% cap; individual windows can still set sizes inline */
+  max-width: none;
+  max-height: none;
   
   /* New for focus opacity */
   opacity: 0.85; /* default less opaque */
