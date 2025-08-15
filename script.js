@@ -79,10 +79,252 @@ function openWindow(title) {
     `;
   } else if (title === "Store") {
     content.innerHTML = `
-      <div style="width: 60%; margin: 10px auto 0 auto;">
-        <img src="cdhand.gif" alt="Store GIF" style="width: 100%; height: auto; display: block;" />
+      <style>
+        .store-container {
+          padding: 20px;
+          /* background removed to inherit window background */
+          position: relative; /* allow positioning of mute button */
+          font-family: inherit; /* match desktop UI font */
+        }
+        
+        /* store header removed */
+        
+        .store-sections {
+          display: grid;
+          grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+          gap: 24px;
+          max-width: 900px;
+          margin: 0 auto;
+        }
+        
+        .store-section {
+          background: transparent;
+          border-radius: 0;
+          padding: 8px 0;
+          box-shadow: none;
+          transition: transform 0.2s ease;
+          cursor: pointer;
+          border: none;
+          text-align: center;
+        }
+        
+        .store-section:hover {
+          transform: translateY(-2px);
+        }
+
+        /* Blue glow on hover for image and title */
+        .store-section:hover .section-icon {
+          filter: drop-shadow(0 0 10px rgba(51,153,255,0.9));
+        }
+        .store-section:hover .section-title {
+          color: #3399ff;
+          text-shadow: 0 0 6px rgba(51,153,255,0.6);
+        }
+        
+        .section-icon {
+          width: 120px;
+          height: 120px;
+          margin: 0 auto 16px auto;
+          display: block;
+          filter: drop-shadow(0 2px 4px rgba(0,0,0,0.2));
+        }
+        
+        .section-title {
+          font-family: inherit; /* match desktop UI font */
+          font-size: 20px;
+          font-weight: bold;
+          text-align: center;
+          margin-bottom: 8px;
+          color: #333;
+        }
+        
+        .section-content {
+        }
+        
+        .section-header {
+          display: flex;
+          align-items: center;
+          margin-bottom: 20px;
+          gap: 15px;
+          padding: 0 20px;
+        }
+        
+        .back-button {
+          background: linear-gradient(to bottom, #e8e8e8, #d0d0d0);
+          border: 1px solid #999;
+          color: #333;
+          padding: 8px 12px;
+          border-radius: 4px;
+          cursor: pointer;
+          font-size: 12px;
+          transition: background 0.2s ease;
+        }
+        
+        .back-button:hover {
+          background: linear-gradient(to bottom, #f0f0f0, #e0e0e0);
+        }
+        
+        #section-title {
+          margin: 0;
+          color: #333;
+          font-size: 24px;
+        }
+        
+        #section-body {
+          color: #333;
+          line-height: 1.6;
+          padding: 0 20px;
+        }
+        
+        .product-grid {
+          display: grid;
+          grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+          gap: 20px;
+          margin-top: 20px;
+        }
+        
+        .product-item {
+          background: white;
+          border: 1px solid #ddd;
+          border-radius: 8px;
+          padding: 15px;
+          text-align: center;
+          box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        
+        .product-image {
+          width: 100%;
+          height: 150px;
+          background: #f5f5f5;
+          border-radius: 4px;
+          margin-bottom: 10px;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          color: #999;
+          font-size: 12px;
+        }
+
+        /* Window-level audio toggle (bottom-right of the Store window) */
+        .store-audio-btn {
+          position: absolute;
+          right: 10px;
+          bottom: 10px;
+          width: 32px;
+          height: 32px;
+          border: none;
+          background: transparent;
+          padding: 0;
+          margin: 0;
+          cursor: pointer;
+          z-index: 20;
+          filter: drop-shadow(0 1px 2px rgba(0,0,0,0.5));
+        }
+        .store-audio-btn img { width: 100%; height: 100%; display: block; transition: filter 0.15s ease; }
+        /* Blue tint on hover */
+        .store-audio-btn:hover img {
+          filter: hue-rotate(200deg) saturate(2) brightness(1.05);
+        }
+      </style>
+      
+      <div class="store-container">
+        <div class="store-sections" id="store-main-sections">
+          <div class="store-section" onclick="openStoreSection('vinyl')">
+            <img src="disc1.png" alt="Vinyl" class="section-icon" />
+            <div class="section-title">Vinyl</div>
+          </div>
+          
+          <div class="store-section" onclick="openStoreSection('cd')">
+            <img src="cdicon.gif" alt="CDs" class="section-icon" />
+            <div class="section-title">CDs</div>
+          </div>
+          
+          <div class="store-section" onclick="openStoreSection('clothes')">
+            <img src="https://img.icons8.com/windows/64/t-shirt.png" alt="Clothing" class="section-icon" />
+            <div class="section-title">Clothing</div>
+          </div>
+        </div>
+        
+        <div class="section-content" id="section-content" style="display: none;">
+          <div class="section-header">
+            <button class="back-button" onclick="showMainStore()">← Back to Store</button>
+            <h2 id="section-title"></h2>
+          </div>
+          <div id="section-body"></div>
+        </div>
       </div>
     `;
+    // Use the window's scrollbar and remove default padding
+    win.classList.add('no-padding');
+
+    // Shopping music: random track rotation with mute
+    (function setupStoreMusic() {
+      const tracks = [
+        'shopping_theme_1.mp3',
+        'shopping_theme_2.mp3',
+        'shopping_theme_3.mp3'
+      ];
+      const audio = new Audio();
+      audio.volume = 0.5;
+      audio.preload = 'auto';
+
+      function pickRandom() {
+        const i = Math.floor(Math.random() * tracks.length);
+        return tracks[i];
+      }
+
+      function playRandom() {
+        audio.src = pickRandom();
+        audio.currentTime = 0;
+        audio.play().catch(() => {/* autoplay may be blocked until user interacts */});
+      }
+
+      // Start playback after slight delay (gives time for user interaction state)
+      setTimeout(playRandom, 50);
+      audio.addEventListener('ended', playRandom);
+
+      // Create window-level image toggle button (bottom-right of the Store window)
+      const toggleBtn = document.createElement('button');
+      toggleBtn.className = 'store-audio-btn';
+      toggleBtn.title = 'Toggle store music';
+      const img = document.createElement('img');
+      // Icons: when muted -> muteon.png, when unmuted -> muteoff.png
+      const ICON_MUTED = 'muteon.png';
+      const ICON_UNMUTED = 'muteoff.png';
+      function updateIcon() {
+        img.src = audio.muted ? ICON_MUTED : ICON_UNMUTED;
+        img.alt = audio.muted ? 'Music Off' : 'Music On';
+      }
+      updateIcon();
+      toggleBtn.appendChild(img);
+      win.appendChild(toggleBtn);
+
+      toggleBtn.addEventListener('click', () => {
+        audio.muted = !audio.muted;
+        updateIcon();
+      });
+
+      // Pause music when this Store window is closed
+      const closeBtn = win.querySelector('.window-header button');
+      if (closeBtn) {
+        closeBtn.addEventListener('click', () => {
+          audio.pause();
+          audio.src = '';
+          if (toggleBtn && toggleBtn.parentNode) toggleBtn.remove();
+        }, { once: true });
+      }
+
+      // Also observe removal of the window node as a fallback
+      const obs = new MutationObserver(() => {
+        if (!document.body.contains(win)) {
+          audio.pause();
+          audio.src = '';
+          if (toggleBtn && toggleBtn.parentNode) toggleBtn.remove();
+          obs.disconnect();
+        }
+      });
+      obs.observe(document.body, { childList: true, subtree: true });
+    })();
   } else if (title === "GOODTRIP") {
     content.innerHTML = `
       <style>
@@ -1755,6 +1997,98 @@ function renderAlbumWindow(config) {
   if (config.title === 'GOODTRIP') {
     setupCassetteClickSounds();
   }
+}
+
+// Store section handler
+function openStoreSection(section) {
+  
+  const mainSections = document.getElementById('store-main-sections');
+  const sectionContent = document.getElementById('section-content');
+  const sectionTitle = document.getElementById('section-title');
+  const sectionBody = document.getElementById('section-body');
+  
+  // Hide main sections, show section content
+  mainSections.style.display = 'none';
+  sectionContent.style.display = 'block';
+  
+  const sectionData = {
+    'vinyl': {
+      title: 'Vinyl Records',
+      content: `
+        <p>Discover our collection of limited edition vinyl releases and exclusive pressings.</p>
+        <div class="product-grid">
+          <div class="product-item">
+            <div class="product-image">GOODTRIP Vinyl</div>
+            <h4>GOODTRIP</h4>
+            <p>Limited Edition Vinyl</p>
+            <div class="coming-soon">Coming Soon</div>
+          </div>
+          <div class="product-item">
+            <div class="product-image">demodisc01 Vinyl</div>
+            <h4>demodisc01</h4>
+            <p>Debut Album Pressing</p>
+            <div class="coming-soon">Coming Soon</div>
+          </div>
+        </div>
+      `
+    },
+    'cd': {
+      title: 'CDs',
+      content: `
+        <p>Physical CD releases and special edition packages with exclusive artwork.</p>
+        <div class="product-grid">
+          <div class="product-item">
+            <div class="product-image">GOODTRIP CD</div>
+            <h4>GOODTRIP</h4>
+            <p>Standard CD Edition</p>
+            <div class="coming-soon">Coming Soon</div>
+          </div>
+          <div class="product-item">
+            <div class="product-image">demodisc01 CD</div>
+            <h4>demodisc01</h4>
+            <p>Debut Album CD</p>
+            <div class="coming-soon">Coming Soon</div>
+          </div>
+        </div>
+      `
+    },
+    'clothes': {
+      title: 'Clothing',
+      content: `
+        <p>Exclusive apparel and merchandise featuring unique Lew_dunit designs.</p>
+        <div class="product-grid">
+          <div class="product-item">
+            <div class="product-image">Logo T-Shirt</div>
+            <h4>Lew_dunit Tee</h4>
+            <p>Classic Logo Design</p>
+            <div class="coming-soon">Coming Soon</div>
+          </div>
+          <div class="product-item">
+            <div class="product-image">GOODTRIP Hoodie</div>
+            <h4>GOODTRIP Hoodie</h4>
+            <p>Album Art Design</p>
+            <div class="coming-soon">Coming Soon</div>
+          </div>
+        </div>
+      `
+    }
+  };
+  
+  const data = sectionData[section];
+  if (data) {
+    sectionTitle.textContent = data.title;
+    sectionBody.innerHTML = data.content;
+  }
+}
+
+// Function to show main store
+function showMainStore() {
+  const mainSections = document.getElementById('store-main-sections');
+  const sectionContent = document.getElementById('section-content');
+  
+  // Show main sections, hide section content
+  mainSections.style.display = 'grid';
+  sectionContent.style.display = 'none';
 }
 
 // Override dispatcher after all functions are defined
