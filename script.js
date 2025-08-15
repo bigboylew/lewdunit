@@ -124,6 +124,7 @@ function openWindow(title) {
             <div class="controls">
               <div class="title" id="file-title">Select a track</div>
               <audio id="rb-audio" controls preload="metadata"></audio>
+              <a id="rb-download" class="download-btn" href="#" download style="justify-self:start; font-size:12px; color:#0366d6; text-decoration:none;">Download WAV</a>
             </div>
           </div>
           <!-- Native HTML5 audio controls for quick working player -->
@@ -135,14 +136,16 @@ function openWindow(title) {
     content.style.padding = '0';
 
     // Hierarchical file system (two folders as requested)
+    // Each audio file can optionally specify explicit mp3 and/or wav URLs.
+    // Playback prefers MP3; downloads prefer WAV (fall back to MP3 if WAV missing).
     const fsData = [
       {
         name: '23-24', type: 'folder', children: [
-          { name: 'newblades.wav', type: 'audio', src: 'https://files.catbox.moe/9lgr6h.wav', art: 'nocover.jpg' },
-          { name: 'INT.wav', type: 'audio', src: 'INT.wav', art: 'nocover.jpg' },
-          { name: 'pachinko.wav', type: 'audio', src: 'https://files.catbox.moe/5puxbs.wav', art: 'nocover.jpg' },
-          { name: 'birdwatcher.wav', type: 'audio', src: 'https://files.catbox.moe/a98yzu.wav', art: 'nocover.jpg' },
-          { name: 'BF.wav', type: 'audio', src: 'https://files.catbox.moe/vxkqec.wav', art: 'nocover.jpg' }
+          { name: 'newblades', type: 'audio', wav: 'newblades.wav', mp3: 'recyclebinmusic/newblades.mp3', art: 'nocover.jpg' },
+          { name: 'INT',        type: 'audio', wav: INT.wav,                                           mp3: 'recyclebinmusic/INT.mp3',        art: 'nocover.jpg' },
+          { name: 'pachinko',   type: 'audio', wav: 'pachinko.wav', mp3: recyclebinmusic/pachinko.mp3,                                  art: 'nocover.jpg' },
+          { name: 'birdwatcher',type: 'audio', wav: 'birdwatcher.wav', mp3: 'recyclebinmusic/birdwatcher.mp3',    art: 'nocover.jpg' },
+          { name: 'BF',         type: 'audio', wav: 'BF.wav', mp3: 'recyclebinmusic/BF.mp3',             art: 'nocover.jpg' }
         ]
       },
       { name: "remixes/flips/edits", type: 'folder', children: [] }
@@ -152,6 +155,7 @@ function openWindow(title) {
     const titleEl = content.querySelector('#file-title');
     const artEl = content.querySelector('#file-artwork');
     const rbAudio = content.querySelector('#rb-audio');
+    const downloadBtn = content.querySelector('#rb-download');
     let selectedRow = null;
 
     // Optional default volume
@@ -225,9 +229,34 @@ function openWindow(title) {
       // if placeholder missing, fallback to a known existing image
       artEl.onerror = () => { artEl.onerror = null; artEl.src = 'demodisccover-hq.png'; };
 
-      rbAudio.src = fileNode.src;
+      // Prefer MP3 for playback when available; WAV for download (fallback to MP3 if WAV missing)
+      const explicitMp3 = fileNode.mp3 || '';
+      const explicitWav = fileNode.wav || '';
+      // If only WAV provided, try to guess MP3 from it for playback convenience
+      const guessedMp3 = explicitMp3 || guessMp3FromWav(explicitWav);
+      const mp3Url = guessedMp3 || '';
+      const wavUrl = explicitWav || '';
+
+      setAudioSources(rbAudio, [
+        { src: mp3Url, type: mp3Url ? 'audio/mpeg' : '' },
+        { src: wavUrl, type: wavUrl ? 'audio/wav' : '' }
+      ]);
+
+      // Set download target: WAV if available, else MP3
+      if (downloadBtn) {
+        const dlUrl = wavUrl || mp3Url || '#';
+        downloadBtn.href = dlUrl;
+        // Label reflects actual type
+        const isWav = /\.wav(\?|$)/i.test(dlUrl);
+        downloadBtn.textContent = isWav ? 'Download WAV' : 'Download';
+        try {
+          const a = new URL(dlUrl, window.location.href);
+          const base = (a.pathname.split('/').pop() || 'track');
+          downloadBtn.setAttribute('download', base);
+        } catch { /* noop */ }
+      }
+
       rbAudio.currentTime = 0;
-      // ensure the browser re-evaluates the new source before playing
       rbAudio.load();
       rbAudio.play().catch((err) => {
         console.warn('Audio play failed:', err);
@@ -259,6 +288,28 @@ function openWindow(title) {
       titleEl.textContent = msg;
       console.error(msg, { src: rbAudio.currentSrc, error: mediaError });
     });
+
+    // Helpers
+    function guessMp3FromWav(url) {
+      if (!url) return '';
+      // replace .wav (optionally with query) with .mp3, keep query if present
+      const m = url.match(/^(.*)\.wav(\?.*)?$/i);
+      if (m) return `${m[1]}.mp3${m[2] || ''}`;
+      return url; // if not wav, just return as-is
+    }
+
+    function setAudioSources(audioEl, sources) {
+      // Clear existing <source> nodes
+      while (audioEl.firstChild) audioEl.removeChild(audioEl.firstChild);
+      // Append new sources in priority order
+      (sources || []).forEach(s => {
+        if (!s || !s.src) return;
+        const srcEl = document.createElement('source');
+        srcEl.src = s.src;
+        if (s.type) srcEl.type = s.type;
+        audioEl.appendChild(srcEl);
+      });
+    }
 
     function findFirstAudio(data) {
       for (const n of data) {
