@@ -505,10 +505,12 @@ function openWindow(title) {
             <div class="section-title">CDs</div>
           </div>
           
+          <!-- Clothing section temporarily disabled
           <div class="store-section" onclick="openStoreSection('clothes')">
             <img src="https://img.icons8.com/windows/64/t-shirt.png" alt="Clothing" class="section-icon" />
             <div class="section-title">Clothing</div>
           </div>
+          -->
         </div>
         
         <div class="section-content" id="section-content" style="display: none;">
@@ -2286,7 +2288,6 @@ function openStoreSection(section) {
     'vinyl': {
       title: 'Vinyl Records',
       content: `
-        <p>Discover our collection of limited edition vinyl releases and exclusive pressings.</p>
         <div class="product-grid">
           <div class="product-item">
             <div class="product-image">GOODTRIP Vinyl</div>
@@ -2304,7 +2305,6 @@ function openStoreSection(section) {
     'cd': {
       title: 'CDs',
       content: `
-        <p>Physical CD releases and special edition packages with exclusive artwork.</p>
         <div class="product-grid">
           <div class="product-item">
             <div class="product-image">GOODTRIP CD</div>
@@ -2322,7 +2322,6 @@ function openStoreSection(section) {
     'clothes': {
       title: 'Clothing',
       content: `
-        <p>Exclusive apparel and merchandise featuring unique Lew_dunit designs.</p>
         <div class="product-grid">
           <div class="product-item">
             <div class="product-image">Logo T-Shirt</div>
