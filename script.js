@@ -78,11 +78,18 @@ function openWindow(title) {
       </iframe>
     `;
   } else if (title === "Recycle Bin") {
-    // Make this window larger to accommodate content
-    win.style.width = '900px';
-    win.style.height = '600px';
-    win.style.maxWidth = 'none';
-    win.style.maxHeight = 'none';
+    // Make this window larger to accommodate content (responsive on mobile)
+    if (isMobile) {
+      win.style.width = '95vw';
+      win.style.height = '90vh';
+      win.style.maxWidth = '';
+      win.style.maxHeight = '';
+    } else {
+      win.style.width = '900px';
+      win.style.height = '600px';
+      win.style.maxWidth = 'none';
+      win.style.maxHeight = 'none';
+    }
 
     content.innerHTML = `
       <style>
