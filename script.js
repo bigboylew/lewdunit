@@ -141,11 +141,11 @@ function openWindow(title) {
     const fsData = [
       {
         name: '23-24', type: 'folder', children: [
-          { name: 'newblades', type: 'audio', wav: 'newblades.wav', mp3: 'recyclebinmusic/newblades.mp3', art: 'nocover.jpg' },
-          { name: 'INT',        type: 'audio', wav: INT.wav,                                           mp3: 'recyclebinmusic/INT.mp3',        art: 'nocover.jpg' },
-          { name: 'pachinko',   type: 'audio', wav: 'pachinko.wav', mp3: recyclebinmusic/pachinko.mp3,                                  art: 'nocover.jpg' },
-          { name: 'birdwatcher',type: 'audio', wav: 'birdwatcher.wav', mp3: 'recyclebinmusic/birdwatcher.mp3',    art: 'nocover.jpg' },
-          { name: 'BF',         type: 'audio', wav: 'BF.wav', mp3: 'recyclebinmusic/BF.mp3',             art: 'nocover.jpg' }
+          { name: 'newblades', type: 'audio', wav: 'https://files.catbox.moe/9lgr6h.wav', mp3: 'recyclebinmusic/newblades.mp3', art: 'nocover.jpg' },
+          { name: 'INT',        type: 'audio', wav: 'https://files.catbox.moe/30392j.wav',                                         mp3: 'recyclebinmusic/INT.mp3',        art: 'nocover.jpg' },
+          { name: 'pachinko',   type: 'audio', wav: 'https://files.catbox.moe/5puxbs.wav', mp3: 'recyclebinmusic/pachinko.mp3',                                  art: 'nocover.jpg' },
+          { name: 'birdwatcher',type: 'audio', wav: 'https://files.catbox.moe/a98yzu.wav', mp3: 'recyclebinmusic/birdwatcher.mp3',    art: 'nocover.jpg' },
+          { name: 'BF',         type: 'audio', wav: 'https://files.catbox.moe/vxkqec.wav', mp3: 'recyclebinmusic/BF.mp3',             art: 'nocover.jpg' }
         ]
       },
       { name: "remixes/flips/edits", type: 'folder', children: [] }
