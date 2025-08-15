@@ -77,6 +77,174 @@ function openWindow(title) {
         <a href="https://lewdunit.bandcamp.com/album/demodisc01">demodisc01 by Lew_dunit</a>
       </iframe>
     `;
+  } else if (title === "Recycle Bin") {
+    // Make this window larger to accommodate content
+    win.style.width = '960px';
+    win.style.height = '640px';
+    win.style.maxWidth = 'none';
+    win.style.maxHeight = 'none';
+
+    content.innerHTML = `
+      <style>
+        .files-root { display: grid; grid-template-columns: 380px 1fr; height: 100%; font-family: inherit; }
+        .files-left { border-right: 1px solid rgba(0,0,0,0.15); background: linear-gradient(#f8f8f8, #e9e9e9); padding: 6px 0; overflow: auto; }
+        .files-right { display: grid; grid-template-rows: 1fr auto; background: #fff; }
+
+        /* Explorer-like tree */
+        .tree { list-style: none; margin: 0; padding: 4px 0 12px 0; }
+        .tree-item { display: block; }
+        .tree-row { display: flex; align-items: center; gap: 8px; padding: 4px 8px; border-radius: 4px; cursor: default; user-select: none; }
+        .tree-row:hover { background: rgba(51,153,255,0.12); }
+        .tree-row.selected { background: rgba(51,153,255,0.18); outline: 1px solid rgba(51,153,255,0.6); }
+        .twisty { width: 12px; display: inline-flex; align-items: center; justify-content: center; font-size: 10px; color: #333; }
+        .icon { width: 18px; height: 18px; object-fit: contain; }
+        .label { font-size: 13px; color: #222; }
+        .children { margin: 0; padding-left: 18px; list-style: none; display: none; }
+        .expanded > .children { display: block; }
+
+        .preview { display: grid; grid-template-rows: 1fr auto; min-height: 0; }
+        .artwork-wrap { display: flex; align-items: center; justify-content: center; padding: 12px; border-bottom: 1px solid rgba(0,0,0,0.1); }
+        .artwork { max-width: 80%; max-height: 100%; box-shadow: 0 2px 12px rgba(0,0,0,0.25); border-radius: 6px; }
+        .controls { padding: 10px 12px; display: grid; grid-template-columns: 1fr; gap: 8px; align-items: center; }
+        .controls .title { font-size: 13px; color: #333; }
+        .controls audio { width: 100%; max-width: 640px; }
+      </style>
+
+      <div class="files-root">
+        <aside class="files-left">
+          <ul class="tree" id="fs-tree"></ul>
+        </aside>
+        <section class="files-right">
+          <div class="preview">
+            <div class="artwork-wrap">
+              <img id="file-artwork" class="artwork" src="demodisccover-hq.png" alt="Artwork" />
+            </div>
+            <div class="controls">
+              <div class="title" id="file-title">Select a track</div>
+              <audio id="rb-audio" controls preload="metadata"></audio>
+            </div>
+          </div>
+          <!-- Native HTML5 audio controls for quick working player -->
+        </section>
+      </div>
+    `;
+
+    // Fill the window: remove padding on this window's content only
+    content.style.padding = '0';
+
+    // Hierarchical file system (folders with files)
+    const fsData = [
+      {
+        name: 'Music', type: 'folder', children: [
+          {
+            name: 'Demo Disc', type: 'folder', children: [
+              { name: 'Track 1.mp3', type: 'audio', src: 'https://files.catbox.moe/ut26i3.mp3', art: 'demodisccover-hq.png' },
+              { name: 'Windows Error.mp3', type: 'audio', src: 'UI Sounds/Windows Error.mp3', art: 'demodisccover-hq.png' },
+              { name: 'Tape Play.mp3', type: 'audio', src: 'tapeplay.mp3', art: 'demodisccover-hq.png' },
+              { name: 'Tape Pause.mp3', type: 'audio', src: 'tapepause.mp3', art: 'demodisccover-hq.png' }
+            ]
+          },
+          { name: 'Unsorted', type: 'folder', children: [] }
+        ]
+      },
+      { name: 'Pictures', type: 'folder', children: [] },
+      { name: 'Documents', type: 'folder', children: [] }
+    ];
+
+    const tree = content.querySelector('#fs-tree');
+    const titleEl = content.querySelector('#file-title');
+    const artEl = content.querySelector('#file-artwork');
+    const rbAudio = content.querySelector('#rb-audio');
+    let selectedRow = null;
+
+    // Optional default volume
+    rbAudio.volume = 0.85;
+
+    function renderTree(data, parentUl, path = '') {
+      data.forEach(node => {
+        const li = document.createElement('li');
+        li.className = 'tree-item';
+
+        const row = document.createElement('div');
+        row.className = 'tree-row';
+
+        const twisty = document.createElement('span');
+        twisty.className = 'twisty';
+        twisty.textContent = node.type === 'folder' ? '▶' : '';
+
+        const icon = document.createElement('img');
+        icon.className = 'icon';
+        icon.src = node.type === 'folder' ? 'pngimg.com - recycle_bin_PNG42.png' : (node.art || 'demodisccover-hq.png');
+
+        const label = document.createElement('span');
+        label.className = 'label';
+        label.textContent = node.name;
+
+        row.appendChild(twisty);
+        row.appendChild(icon);
+        row.appendChild(label);
+        li.appendChild(row);
+
+        if (node.type === 'folder') {
+          const childrenUl = document.createElement('ul');
+          childrenUl.className = 'children';
+          li.appendChild(childrenUl);
+
+          row.addEventListener('click', () => {
+            const expanded = li.classList.toggle('expanded');
+            twisty.textContent = expanded ? '▼' : '▶';
+          });
+
+          // Render folder children
+          renderTree(node.children || [], childrenUl, `${path}${node.name}/`);
+        } else if (node.type === 'audio') {
+          row.style.cursor = 'pointer';
+          row.addEventListener('click', () => selectAudio(node, row, `${path}${node.name}`));
+        }
+
+        parentUl.appendChild(li);
+      });
+    }
+
+    function clearSelected() {
+      if (selectedRow) selectedRow.classList.remove('selected');
+      selectedRow = null;
+    }
+
+    function selectAudio(fileNode, rowEl, displayPath) {
+      clearSelected();
+      selectedRow = rowEl;
+      selectedRow.classList.add('selected');
+
+      titleEl.textContent = displayPath || fileNode.name;
+      if (fileNode.art) artEl.src = fileNode.art;
+
+      rbAudio.src = fileNode.src;
+      rbAudio.currentTime = 0;
+      rbAudio.play().catch(() => {});
+    }
+
+    // If user clicks play before selecting, auto-open root Music and play first audio
+    rbAudio.addEventListener('play', () => {
+      if (!selectedRow) {
+        const first = findFirstAudio(fsData);
+        if (first) selectAudio(first.node, null, `Music/${first.node.name}`);
+      }
+    });
+
+    function findFirstAudio(data) {
+      for (const n of data) {
+        if (n.type === 'audio') return { node: n };
+        if (n.type === 'folder') {
+          const found = findFirstAudio(n.children || []);
+          if (found) return found;
+        }
+      }
+      return null;
+    }
+
+    // Render the tree
+    renderTree(fsData, tree);
   } else if (title === "Store") {
     content.innerHTML = `
       <style>
@@ -980,8 +1148,10 @@ function openWindow(title) {
     content.innerHTML = `<p>This is the ${title} window.</p>`;
   }
 
-  // Set window size based on title
-  if (title === "Store") {
+  // Set window size based on title (do not override Recycle Bin's explicit size set earlier)
+  if (title === "Recycle Bin") {
+    // keep 1100x720 from the Recycle Bin block above
+  } else if (title === "Store") {
     win.style.width = isMobile ? '85vw' : '700px';
     win.style.height = isMobile ? '80vh' : '500px';
   } else if (title === "GOODTRIP") {
