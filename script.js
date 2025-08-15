@@ -110,6 +110,13 @@ function openWindow(title) {
         .controls { padding: 10px 12px; display: grid; grid-template-columns: 1fr; gap: 8px; align-items: center; }
         .controls .title { font-size: 13px; color: #333; }
         .controls audio { width: 100%; max-width: 640px; }
+        /* disabled state for the download button */
+        .download-btn[disabled] {
+          opacity: 0.5;
+          pointer-events: none;
+          cursor: not-allowed;
+          color: #888 !important;
+        }
       </style>
 
       <div class="files-root">
@@ -124,7 +131,7 @@ function openWindow(title) {
             <div class="controls">
               <div class="title" id="file-title">Select a track</div>
               <audio id="rb-audio" controls preload="metadata"></audio>
-              <a id="rb-download" class="download-btn" href="#" download style="justify-self:start; font-size:12px; color:#0366d6; text-decoration:none;">Download WAV</a>
+              <a id="rb-download" class="download-btn" href="#" download style="justify-self:start; font-size:12px; color:#0366d6; text-decoration:none;">Download</a>
             </div>
           </div>
           <!-- Native HTML5 audio controls for quick working player -->
@@ -157,6 +164,13 @@ function openWindow(title) {
     const rbAudio = content.querySelector('#rb-audio');
     const downloadBtn = content.querySelector('#rb-download');
     let selectedRow = null;
+
+    // Initialize download button as disabled until a file is selected
+    if (downloadBtn) {
+      downloadBtn.setAttribute('disabled', 'true');
+      downloadBtn.href = '#';
+      downloadBtn.textContent = 'Download';
+    }
 
     // Optional default volume
     rbAudio.volume = 0.85;
@@ -246,9 +260,14 @@ function openWindow(title) {
       if (downloadBtn) {
         const dlUrl = wavUrl || mp3Url || '#';
         downloadBtn.href = dlUrl;
-        // Label reflects actual type
-        const isWav = /\.wav(\?|$)/i.test(dlUrl);
-        downloadBtn.textContent = isWav ? 'Download WAV' : 'Download';
+        // Always show 'Download' per request
+        downloadBtn.textContent = 'Download';
+        // Enable/disable based on availability
+        if (dlUrl === '#') {
+          downloadBtn.setAttribute('disabled', 'true');
+        } else {
+          downloadBtn.removeAttribute('disabled');
+        }
         try {
           const a = new URL(dlUrl, window.location.href);
           const base = (a.pathname.split('/').pop() || 'track');
