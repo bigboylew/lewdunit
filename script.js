@@ -148,11 +148,11 @@ function openWindow(title) {
     const fsData = [
       {
         name: '23-24', type: 'folder', children: [
-          { name: 'newblades', type: 'audio', wav: 'https://files.catbox.moe/9lgr6h.wav', mp3: 'recyclebinmusic/newblades.mp3', art: 'nocover.jpg' },
-          { name: 'INT',        type: 'audio', wav: 'https://files.catbox.moe/30392j.wav',                                         mp3: 'recyclebinmusic/INT.mp3',        art: 'nocover.jpg' },
-          { name: 'pachinko',   type: 'audio', wav: 'https://files.catbox.moe/5puxbs.wav', mp3: 'recyclebinmusic/pachinko.mp3',                                  art: 'nocover.jpg' },
-          { name: 'birdwatcher',type: 'audio', wav: 'https://files.catbox.moe/a98yzu.wav', mp3: 'recyclebinmusic/birdwatcher.mp3',    art: 'nocover.jpg' },
-          { name: 'BF',         type: 'audio', wav: 'https://files.catbox.moe/vxkqec.wav', mp3: 'recyclebinmusic/BF.mp3',             art: 'nocover.jpg' }
+          { name: 'newblades.wav', type: 'audio', wav: 'https://files.catbox.moe/9lgr6h.wav', mp3: 'recyclebinmusic/newblades.mp3', art: 'nocover.jpg' },
+          { name: 'INT.wav',        type: 'audio', wav: 'https://files.catbox.moe/30392j.wav',                                         mp3: 'recyclebinmusic/INT.mp3',        art: 'nocover.jpg' },
+          { name: 'pachinko.wav',   type: 'audio', wav: 'https://files.catbox.moe/5puxbs.wav', mp3: 'recyclebinmusic/pachinko.mp3',                                  art: 'nocover.jpg' },
+          { name: 'birdwatcher.wav',type: 'audio', wav: 'https://files.catbox.moe/a98yzu.wav', mp3: 'recyclebinmusic/birdwatcher.mp3',    art: 'nocover.jpg' },
+          { name: 'BF.wav',         type: 'audio', wav: 'https://files.catbox.moe/vxkqec.wav', mp3: 'recyclebinmusic/BF.mp3',             art: 'nocover.jpg' }
         ]
       },
       { name: "remixes/flips/edits", type: 'folder', children: [] }
@@ -526,9 +526,9 @@ function openWindow(title) {
     // Shopping music: random track rotation with mute
     (function setupStoreMusic() {
       const tracks = [
-        'shopping_theme_1.mp3',
-        'shopping_theme_2.mp3',
-        'shopping_theme_3.mp3'
+        'goldentime.mp3',
+       // 'shopping_theme_2.mp3',
+       // 'shopping_theme_3.mp3'
       ];
       const audio = new Audio();
       audio.volume = 0.5;
