@@ -2056,6 +2056,31 @@ function renderAlbumWindow(config) {
 
   win.classList.add('no-padding');
 
+  // JS fallback: enforce vertical stacking on narrow viewports or mobile
+  (function enforceStackingFallback() {
+    const layout = content.querySelector('.goodtrip-layout');
+    const leftPane = content.querySelector('.goodtrip-left');
+    const rightPane = content.querySelector('.goodtrip-right');
+    if (!layout || !leftPane || !rightPane) return;
+
+    function applyStacking() {
+      const narrow = window.innerWidth <= 900 || isMobile;
+      if (narrow) {
+        layout.style.display = 'flex';
+        layout.style.flexDirection = 'column';
+        leftPane.style.width = '100%';
+        rightPane.style.width = '100%';
+      } else {
+        layout.style.flexDirection = '';
+        leftPane.style.width = '';
+        rightPane.style.width = '';
+      }
+    }
+
+    applyStacking();
+    window.addEventListener('resize', applyStacking);
+  })();
+
   ['goodtrip-rewind', 'goodtrip-play', 'goodtrip-pause', 'goodtrip-forward'].forEach(id => {
     const btn = content.querySelector(`#${id}`);
     if (btn) btn.style.cursor = 'pointer';
