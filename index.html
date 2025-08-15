@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Lew_dunit</title>
+  <link rel="stylesheet" href="style.css">
+  <script src="script.js" defer></script>
+</head>
+<body>
+
+  <div id="login-screen">
+    <div class="login-background"></div>
+  
+    <!-- New loading message -->
+    <div id="loading-message">
+      Loading<span class="dot">.</span><span class="dot">.</span><span class="dot">.</span>
+    </div>
+  
+    <div class="login-box" onclick="dismissLoginOverlay()">
+      <img src="profilepic.jpg" class="login-avatar" />
+      <div class="login-name">Lew_dunit</div>
+    </div>
+  
+    <div class="login-footer">
+      <img src="lewoslogo.png" class="win-logo" />
+    </div>
+  </div>
+
+  <div id="desktop">
+    <div class="icon" style="top: 20px; left: 20px;">
+      <img src="recyclebin.png" />
+      <span>Recycle Bin</span>
+    </div>
+
+
+
+    <div class="icon" style="top: 20px; left: 120px;">
+      <img src="goodtrip.png" />
+      <span>GOODTRIP</span>
+    </div>
+
+    <div class="icon" style="top: 120px; left: 120px;">
+      <img src="https://img.icons8.com/windows/64/user-male-circle.png" />
+      <span>Socials</span>
+    </div>
+
+    <div class="icon" style="top: 120px; left: 20px;">
+      <img src="https://img.icons8.com/windows/64/shopping-bag.png" />
+      <span>Store</span>
+    </div>
+    
+    <div class="icon" style="top: 120px; left: 20px;">
+      <img src="cdicon.gif" />
+      <span>Music</span>
+    </div>
+  </div>
+
+  <div id="taskbar">
+    <div id="start-button" onclick="toggleStartMenu()">
+      <img src="orbsmall.png" alt="Start" class="start-orb" />
+    </div>
+    <div id="taskbar-apps"></div>
+    <div id="clock"></div>
+  </div>
+
+  <div id="start-menu" class="hidden">
+    <div class="start-header">
+      <img src="profilepic.jpg" alt="User Avatar" class="user-avatar">
+      <strong class="username">Lew_dunit</strong>
+    </div>
+    <ul>
+      <li onclick="openWindow('Music')">Music</li>
+    </ul>
+  </div>
+  
+  <div id="selection-box"></div>
+
+  <!-- Window Template -->
+  <template id="window-template">
+    <div class="window" onmousedown="bringToFront(this)">
+      <div class="window-header">
+        <span class="window-title"></span>
+        <button onclick="closeWindow(this)">X</button>
+      </div>
+      <div class="window-content"></div>
+    </div>
+  </template>
+  
+  <audio id="sound-close" src="https://files.catbox.moe/nmgith.mp3" preload="auto"></audio>
+  <audio id="sound-logon" src="https://files.catbox.moe/7tkpiy.mp3" preload="auto"></audio>
+  <audio id="sound-error" src="https://files.catbox.moe/2elxeq.mp3" preload="auto"></audio>
+  
+  <audio id="goodtrip-click" src="https://files.catbox.moe/bl1xx1.mp3" preload="auto"></audio>
+  <audio id="goodtrip-play-sound" src="https://files.catbox.moe/bl1xx1.mp3" preload="auto"></audio>
+  <audio id="goodtrip-pause-sound" src="https://files.catbox.moe/hu8yrw.mp3" preload="auto"></audio>
+  
+  <div id="album-modal" class="hidden">
+    <div class="modal-backdrop" onclick="closeAlbumModal()"></div>
+    <div class="modal-content">
+      <div class="modal-image-wrapper">
+        <img src="" alt="Album Cover" />
+      </div>
+    
+      <div class="modal-buttons">
+        <a href="" download class="download-btn">Download</a>
+      </div>
+    
+      <button class="close-btn" onclick="closeAlbumModal()">×</button>
+    </div>
+  </div>
+
+</body>
+</html>
