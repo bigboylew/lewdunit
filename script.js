@@ -496,7 +496,7 @@ function openWindow(title) {
       <div class="store-container">
         <div class="store-sections" id="store-main-sections">
           <div class="store-section" onclick="openStoreSection('vinyl')">
-            <img src="disc1.png" alt="Vinyl" class="section-icon" />
+            <img src="vinyl.gif" alt="Vinyl" class="section-icon" />
             <div class="section-title">Vinyl</div>
           </div>
           
@@ -2291,13 +2291,11 @@ function openStoreSection(section) {
           <div class="product-item">
             <div class="product-image">GOODTRIP Vinyl</div>
             <h4>GOODTRIP</h4>
-            <p>Limited Edition Vinyl</p>
             <div class="coming-soon">Coming Soon</div>
           </div>
           <div class="product-item">
             <div class="product-image">demodisc01 Vinyl</div>
             <h4>demodisc01</h4>
-            <p>Debut Album Pressing</p>
             <div class="coming-soon">Coming Soon</div>
           </div>
         </div>
@@ -2311,13 +2309,11 @@ function openStoreSection(section) {
           <div class="product-item">
             <div class="product-image">GOODTRIP CD</div>
             <h4>GOODTRIP</h4>
-            <p>Standard CD Edition</p>
             <div class="coming-soon">Coming Soon</div>
           </div>
           <div class="product-item">
             <div class="product-image">demodisc01 CD</div>
             <h4>demodisc01</h4>
-            <p>Debut Album CD</p>
             <div class="coming-soon">Coming Soon</div>
           </div>
         </div>
@@ -2331,13 +2327,11 @@ function openStoreSection(section) {
           <div class="product-item">
             <div class="product-image">Logo T-Shirt</div>
             <h4>Lew_dunit Tee</h4>
-            <p>Classic Logo Design</p>
             <div class="coming-soon">Coming Soon</div>
           </div>
           <div class="product-item">
             <div class="product-image">GOODTRIP Hoodie</div>
             <h4>GOODTRIP Hoodie</h4>
-            <p>Album Art Design</p>
             <div class="coming-soon">Coming Soon</div>
           </div>
         </div>
