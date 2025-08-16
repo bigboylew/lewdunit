@@ -256,6 +256,8 @@ body, html {
   height: 100%;
   image-rendering: pixelated;
   border-radius: 50%;
+  /* Revert to original colors (no forced black) */
+  filter: none;
 }
 
 /* Taskbar apps container */

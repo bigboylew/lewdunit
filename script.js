@@ -12,6 +12,13 @@ for (const soundKey in sounds) {
   sounds[soundKey].load();
 }
 
+
+// Persistent state for Store music (survives Store window close/reopen)
+const storeMusicState = {
+  recent: [],      // queue of recently played track indices
+  lastIndex: null, // last played track index
+};
+
 // Play sound helper function
 function playSound(name) {
   const sound = sounds[name];
@@ -632,22 +639,49 @@ function openWindow(title) {
           font-size: 12px;
         }
 
-        /* Window-level audio toggle (bottom-right of the Store window) */
-        .store-audio-btn {
+        /* Window-level audio controls (bottom-right of the Store window) */
+        .store-audio-wrap {
           position: absolute;
-          right: 10px;
-          bottom: 10px;
-          width: 32px;
-          height: 32px;
-          border: none;
+          right: 12px;
+          bottom: 8px;
+          display: flex;
+          align-items: center;
+          gap: 6px;
+          flex-direction: row-reverse; /* show slider to the left of button */
+          z-index: 20;
+        }
+        .store-audio-btn {
+          width: 28px;
+          height: 28px;
           background: transparent;
+          border: none;
           padding: 0;
           margin: 0;
           cursor: pointer;
-          z-index: 20;
           filter: drop-shadow(0 1px 2px rgba(0,0,0,0.5));
+          opacity: 0.55;
+          transition: opacity 0.15s ease;
         }
+        .store-audio-btn:hover { opacity: 1; }
         .store-audio-btn img { width: 100%; height: 100%; display: block; transition: filter 0.15s ease; }
+        .store-volume {
+          width: 80px;
+          height: 4px;
+          appearance: none;
+          background: #bbb; /* solid color */
+          border-radius: 2px;
+          outline: none;
+          opacity: 0; /* hidden by default */
+          transition: opacity 0.15s ease;
+        }
+        /* Show slider when hovering the control area (button or slider) */
+        .store-audio-wrap:hover .store-volume { opacity: 1; }
+        /* WebKit slider styling */
+        .store-volume::-webkit-slider-runnable-track { height: 4px; background: #bbb; border-radius: 2px; }
+        .store-volume::-webkit-slider-thumb { -webkit-appearance: none; appearance: none; width: 10px; height: 10px; border-radius: 50%; background: #666; margin-top: -3px; box-shadow: 0 0 4px rgba(0,0,0,0.5); }
+        /* Firefox */
+        .store-volume::-moz-range-track { height: 4px; background: #bbb; border-radius: 2px; }
+        .store-volume::-moz-range-thumb { width: 10px; height: 10px; border: none; border-radius: 50%; background: #666; box-shadow: 0 0 4px rgba(0,0,0,0.5); }
         /* Blue tint on hover */
         .store-audio-btn:hover img {
           filter: hue-rotate(200deg) saturate(2) brightness(1.05);
@@ -699,22 +733,56 @@ function openWindow(title) {
       audio.volume = 0.5;
       audio.preload = 'auto';
 
-      function pickRandom() {
-        const i = Math.floor(Math.random() * tracks.length);
-        return tracks[i];
+      // maintain current index in this session
+      let currentIdx = null;
+      const WINDOW = Math.max(1, Math.min(4, tracks.length - 1));
+
+      function pickNextIndex(prevIdx) {
+        // Build candidate list excluding recent history (up to WINDOW)
+        const recentSet = new Set(storeMusicState.recent.slice(-WINDOW));
+        const candidates = [];
+        for (let i = 0; i < tracks.length; i++) {
+          if (!recentSet.has(i)) candidates.push(i);
+        }
+        // If no candidates (e.g., very short list), allow all except prevIdx when possible
+        let pool = candidates.length ? candidates : [...Array(tracks.length).keys()];
+        if (pool.length > 1 && typeof prevIdx === 'number') {
+          pool = pool.filter(i => i !== prevIdx);
+        }
+        const i = pool[Math.floor(Math.random() * pool.length)];
+        return i;
       }
 
-      function playRandom() {
-        audio.src = pickRandom();
+      function notePlayed(idx) {
+        storeMusicState.lastIndex = idx;
+        storeMusicState.recent.push(idx);
+        while (storeMusicState.recent.length > WINDOW) storeMusicState.recent.shift();
+      }
+
+      function playIndex(idx) {
+        currentIdx = idx;
+        notePlayed(idx);
+        audio.src = tracks[idx];
         audio.currentTime = 0;
         audio.play().catch(() => {/* autoplay may be blocked until user interacts */});
       }
 
-      // Start playback after slight delay (gives time for user interaction state)
-      setTimeout(playRandom, 50);
-      audio.addEventListener('ended', playRandom);
+      function playNext() {
+        const nextIdx = pickNextIndex(currentIdx);
+        playIndex(nextIdx);
+      }
 
-      // Create window-level image toggle button (bottom-right of the Store window)
+      // Start playback after slight delay, avoid repeating last track from previous session
+      setTimeout(() => {
+        const startIdx = pickNextIndex(storeMusicState.lastIndex);
+        playIndex(startIdx);
+      }, 50);
+      audio.addEventListener('ended', playNext);
+
+      // Create window-level audio controls (mute toggle + volume)
+      const controlsWrap = document.createElement('div');
+      controlsWrap.className = 'store-audio-wrap';
+
       const toggleBtn = document.createElement('button');
       toggleBtn.className = 'store-audio-btn';
       toggleBtn.title = 'Toggle store music';
@@ -728,7 +796,29 @@ function openWindow(title) {
       }
       updateIcon();
       toggleBtn.appendChild(img);
-      win.appendChild(toggleBtn);
+
+      const vol = document.createElement('input');
+      vol.type = 'range';
+      vol.className = 'store-volume';
+      vol.min = '0';
+      vol.max = '1';
+      vol.step = '0.05';
+      vol.value = String(audio.volume);
+
+      vol.addEventListener('input', () => {
+        const v = parseFloat(vol.value);
+        audio.volume = isNaN(v) ? 0.5 : Math.max(0, Math.min(1, v));
+        if (audio.volume === 0) {
+          audio.muted = true;
+        } else if (audio.muted) {
+          audio.muted = false;
+        }
+        updateIcon();
+      });
+
+      controlsWrap.appendChild(toggleBtn);
+      controlsWrap.appendChild(vol);
+      win.appendChild(controlsWrap);
 
       toggleBtn.addEventListener('click', () => {
         audio.muted = !audio.muted;
@@ -741,7 +831,7 @@ function openWindow(title) {
         closeBtn.addEventListener('click', () => {
           audio.pause();
           audio.src = '';
-          if (toggleBtn && toggleBtn.parentNode) toggleBtn.remove();
+          if (controlsWrap && controlsWrap.parentNode) controlsWrap.remove();
         }, { once: true });
       }
 
@@ -750,7 +840,7 @@ function openWindow(title) {
         if (!document.body.contains(win)) {
           audio.pause();
           audio.src = '';
-          if (toggleBtn && toggleBtn.parentNode) toggleBtn.remove();
+          if (controlsWrap && controlsWrap.parentNode) controlsWrap.remove();
           obs.disconnect();
         }
       });
@@ -2194,9 +2284,9 @@ function renderAlbumWindow(config) {
         background-size: cover !important; 
       }
       .goodtrip-left[data-title="${config.title}"] { 
-        width: 320px !important; 
-        min-width: 300px !important; 
-        max-width: 320px !important; 
+        width: 330px !important; 
+        min-width: 315px !important; 
+        max-width: 360px !important; 
         height: 100% !important; 
         ${config.leftBackground.startsWith('#') ? `background: ${config.leftBackground} !important;` : `background: url('${config.leftBackground}') no-repeat center center !important; background-size: cover !important;`} 
         display: flex; 
@@ -2214,7 +2304,12 @@ function renderAlbumWindow(config) {
       .goodtrip-resizer {
         flex: 0 0 6px;
         cursor: col-resize;
-        background: rgba(0,0,0,0.08);
+        background: linear-gradient(
+          to right,
+          rgba(255,255,255,0.35),
+          rgba(255,255,255,0.0),
+          rgba(255,255,255,0.35)
+        );
         border-left: 1px solid rgba(0,0,0,0.12);
         border-right: 1px solid rgba(255,255,255,0.2);
         align-self: stretch;
@@ -2306,78 +2401,7 @@ function renderAlbumWindow(config) {
     </div>
   `;
 
-  // Inject mobile-specific stacking rules for this album window only (scoped by title)
-  (function applyMobileAlbumLayout() {
-    const style = document.createElement('style');
-    style.textContent = `
-      @media (max-width: 768px) {
-        .goodtrip-layout[data-title="${config.title}"] {
-          flex-direction: column !important;
-          height: auto !important;
-          max-height: none !important;
-        }
-
-        .goodtrip-left[data-title="${config.title}"] {
-          width: 100% !important;
-          max-width: 100% !important;
-          min-width: 100% !important;
-          height: fit-content !important;
-          min-height: 200px !important;
-          flex-shrink: 0;
-          overflow-y: auto;
-          overflow-x: hidden;
-          padding-bottom: 20px;
-        }
-
-        /* Hide resizer on mobile layout */
-        .window[data-title="${config.title}"] .goodtrip-resizer { display: none !important; }
-
-        .window[data-title="${config.title}"] .goodtrip-right {
-          width: 100% !important;
-          height: fit-content !important;
-          min-height: 200px !important;
-          flex-grow: 1;
-          overflow-y: auto;
-          overflow-x: hidden;
-          padding-top: 20px;
-        }
-
-        .window[data-title="${config.title}"] .left-inner {
-          padding: 10px;
-          overflow-y: auto;
-          height: 100%;
-        }
-      }
-    `;
-    document.head.appendChild(style);
-  })();
-
   win.classList.add('no-padding');
-
-  // JS fallback: enforce vertical stacking on narrow viewports or mobile
-  (function enforceStackingFallback() {
-    const layout = content.querySelector('.goodtrip-layout');
-    const leftPane = content.querySelector('.goodtrip-left');
-    const rightPane = content.querySelector('.goodtrip-right');
-    if (!layout || !leftPane || !rightPane) return;
-
-    function applyStacking() {
-      const narrow = window.innerWidth <= 900 || isMobile;
-      if (narrow) {
-        layout.style.display = 'flex';
-        layout.style.flexDirection = 'column';
-        leftPane.style.width = '100%';
-        rightPane.style.width = '100%';
-      } else {
-        layout.style.flexDirection = '';
-        leftPane.style.width = '';
-        rightPane.style.width = '';
-      }
-    }
-
-    applyStacking();
-    window.addEventListener('resize', applyStacking);
-  })();
 
   // Enable dragging the vertical resizer to adjust left pane width within min/max
   (function setupGoodtripResizer() {
@@ -2401,13 +2425,11 @@ function renderAlbumWindow(config) {
       } else if (maxProp && maxProp !== 'none' && !isNaN(parseFloat(maxProp))) {
         maxW = parseFloat(maxProp);
       } else {
-        // Fallback to the rule we set (70% of layout) if computed max-width is 'none'
-        maxW = 0.7 * layoutRect.width;
+        // If computed max-width is 'none', cap to the container width
+        maxW = layoutRect.width;
       }
-      // Ensure the right pane keeps at least some space
-      const minRight = 280; // px
-      maxW = Math.min(maxW, layoutRect.width - minRight);
-      if (!isFinite(maxW) || maxW <= 0) maxW = layoutRect.width - minRight;
+      // Sanity clamp
+      if (!isFinite(maxW) || maxW <= 0) maxW = layoutRect.width;
       return { minW, maxW };
     }
 
@@ -2416,7 +2438,10 @@ function renderAlbumWindow(config) {
       const { minW, maxW } = getBounds();
       const cur = left.getBoundingClientRect().width;
       let next = Math.max(minW, Math.min(maxW, cur));
-      left.style.setProperty('width', `${Math.round(next)}px`, 'important');
+      next = Math.round(next);
+      // Use flex-basis for sizing within flex layout; clear width to avoid conflicts
+      left.style.setProperty('width', 'auto', 'important');
+      left.style.setProperty('flex', `0 0 ${next}px`, 'important');
     })();
 
     function onMouseMove(e) {
@@ -2426,7 +2451,9 @@ function renderAlbumWindow(config) {
       let newW = startWidth + dx;
       if (newW < minW) newW = minW;
       if (newW > maxW) newW = maxW;
-      left.style.setProperty('width', `${Math.round(newW)}px`, 'important');
+      const px = Math.round(newW);
+      left.style.setProperty('width', 'auto', 'important');
+      left.style.setProperty('flex', `0 0 ${px}px`, 'important');
     }
 
     function endDrag() {
@@ -2457,7 +2484,9 @@ function renderAlbumWindow(config) {
         let next = cur + (e.key === 'ArrowRight' ? step : -step);
         if (next < minW) next = minW;
         if (next > maxW) next = maxW;
-        left.style.setProperty('width', `${Math.round(next)}px`, 'important');
+        next = Math.round(next);
+        left.style.setProperty('width', 'auto', 'important');
+        left.style.setProperty('flex', `0 0 ${next}px`, 'important');
         e.preventDefault();
       }
     });
@@ -2465,8 +2494,16 @@ function renderAlbumWindow(config) {
     window.addEventListener('resize', () => {
       const { minW, maxW } = getBounds();
       const cur = left.getBoundingClientRect().width;
-      if (cur < minW) left.style.setProperty('width', `${Math.round(minW)}px`, 'important');
-      if (cur > maxW) left.style.setProperty('width', `${Math.round(maxW)}px`, 'important');
+      if (cur < minW) {
+        const v = Math.round(minW);
+        left.style.setProperty('width', 'auto', 'important');
+        left.style.setProperty('flex', `0 0 ${v}px`, 'important');
+      }
+      if (cur > maxW) {
+        const v = Math.round(maxW);
+        left.style.setProperty('width', 'auto', 'important');
+        left.style.setProperty('flex', `0 0 ${v}px`, 'important');
+      }
     });
   })();
 
