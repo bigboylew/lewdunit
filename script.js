@@ -556,7 +556,7 @@ function openWindow(title) {
         }
 
         .product-item {
-          background: white;
+          background: rgba(255,255,255,0.85);
           border: 1px solid #ddd;
           border-radius: 8px;
           padding: 12px;
@@ -734,10 +734,274 @@ function openWindow(title) {
         { id: 'p3', title: 'iso', type: 'cd', subtitle: 'CD', img: 'isocover.webp', price: 1.00 },
         { id: 'p4', title: 'apple', type: 'vinyl', subtitle: 'Vinyl', img: 'applecover.webp', price: 1.00 },
         { id: 'p5', title: 'Lew Hoodie', type: 'clothing', subtitle: 'Hoodie', img: 'nocover.jpg', price: 1.00 },
-        { id: 'p6', title: 'Whodunit?', type: 'vinyl', subtitle: 'Standard Black Vinyl', img: 'whodunitvinyl1.webp', price: 27.90 }
+        { id: 'p6', title: 'Whodunit?', type: 'vinyl', subtitle: 'Standard Black Vinyl', img: 'whodunitvinyl1.webp', images: ['whodunitvinyl1.webp','whodunitvinyl1.png'], price: 27.90 }
       ];
       const grid = content.querySelector('#store-products');
       const buttons = Array.from(content.querySelectorAll('.store-filter-btn'));
+
+      // Helper: open product detail overlay with animated image transition
+      function openProductDetail(product, sourceCard) {
+        const reduceMotion = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+        // Support multiple images (carousel). Fallback to single image
+        const images = Array.isArray(product.images) && product.images.length ? product.images : [product.img].filter(Boolean);
+        let currentIndex = 0;
+        // Create overlay container
+        let overlay = content.querySelector('.store-detail-overlay');
+        if (!overlay) {
+          overlay = document.createElement('div');
+          overlay.className = 'store-detail-overlay';
+          Object.assign(overlay.style, {
+            position: 'absolute',
+            left: '0', right: '0', top: '0', bottom: '40px', /* keep bottom bar visible */
+            background: 'rgba(255,255,255,0.96)',
+            backdropFilter: 'blur(3px)',
+            WebkitBackdropFilter: 'blur(3px)',
+            zIndex: '20',
+            overflow: 'auto',
+            opacity: '0',
+            transition: 'opacity 220ms ease'
+          });
+          content.querySelector('.store-container')?.appendChild(overlay);
+        }
+
+        // Build detail inner layout
+        const slidesHtml = images.map((src, i) => `
+              <li class=\"glide__slide\">
+                <img class=\"detail-hero-img\" src=\"${src}\" alt=\"${product.title}\" style=\"max-width: 85%; max-height: 85%; object-fit: contain; visibility: ${i===0?'hidden':'visible'}; opacity: ${i===0?'0':'1'}; transition: opacity 160ms ease;\" />
+              </li>`).join('');
+        const bulletsHtml = images.map((_, i) => `<button class=\"glide__bullet\" data-glide-dir=\"=${i}\"></button>`).join('');
+        overlay.innerHTML = `
+          <style>
+            /* Scoped to the store detail overlay */
+            .store-detail-overlay .detail-hero {
+              background: rgba(255,255,255,0.66);
+              border: 1px solid rgba(255,255,255,0.7);
+              box-shadow: 0 8px 28px rgba(0,0,0,0.18), inset 0 1px 0 rgba(255,255,255,0.6);
+              backdrop-filter: blur(8px);
+              -webkit-backdrop-filter: blur(8px);
+            }
+            .store-detail-overlay .detail-hero .glide { width: 100%; height: 100%; }
+            .store-detail-overlay .glide__track { height: 100%; }
+            .store-detail-overlay .glide__slides {
+              height: 100%;
+              display: flex;
+              align-items: center;
+              justify-content: center;
+            }
+            .store-detail-overlay .glide__slide {
+              display: flex;
+              align-items: center;
+              justify-content: center;
+            }
+            .store-detail-overlay .detail-hero-img {
+              display: block;
+              margin: 0 auto;
+              max-width: 85%;
+              max-height: 85%;
+              object-fit: contain;
+            }
+            /* Aero-style arrows */
+            .store-detail-overlay .glide__arrow {
+              position: absolute;
+              top: 50%;
+              transform: translateY(-50%);
+              border: 1px solid rgba(0,0,0,0.25);
+              border-radius: 8px;
+              padding: 6px 10px;
+              background: linear-gradient(rgba(255,255,255,0.85), rgba(240,240,240,0.85));
+              color: #111;
+              cursor: pointer;
+              box-shadow: 0 2px 8px rgba(0,0,0,0.18);
+              backdrop-filter: blur(6px);
+              -webkit-backdrop-filter: blur(6px);
+              transition: background 120ms ease, transform 120ms ease, box-shadow 120ms ease;
+              z-index: 2;
+            }
+            .store-detail-overlay .glide__arrow:hover {
+              background: linear-gradient(rgba(255,255,255,0.95), rgba(235,235,235,0.95));
+              box-shadow: 0 4px 12px rgba(0,0,0,0.22);
+            }
+            .store-detail-overlay .glide__arrow:active {
+              transform: translateY(-50%) scale(0.98);
+            }
+            .store-detail-overlay .glide__arrow--left { left: 10px; }
+            .store-detail-overlay .glide__arrow--right { right: 10px; }
+            /* Aero-style bullets */
+            .store-detail-overlay .glide__bullets {
+              position: absolute;
+              bottom: 10px;
+              left: 50%;
+              transform: translateX(-50%);
+              display: flex;
+              align-items: center;
+              justify-content: center;
+              gap: 8px;
+              z-index: 2;
+              pointer-events: auto;
+            }
+            .store-detail-overlay .glide__bullet {
+              display: inline-block;
+              width: 10px;
+              height: 10px;
+              aspect-ratio: 1 / 1;
+              border-radius: 50%;
+              border: 1px solid rgba(0,0,0,0.28);
+              background: rgba(255,255,255,0.78);
+              box-shadow: 0 1px 3px rgba(0,0,0,0.22), inset 0 1px 0 rgba(255,255,255,0.6);
+              backdrop-filter: blur(4px);
+              -webkit-backdrop-filter: blur(4px);
+              cursor: pointer;
+              padding: 0;
+              line-height: 0;
+              box-sizing: content-box;
+              transition: transform 120ms ease, background 120ms ease, border-color 120ms ease;
+            }
+            .store-detail-overlay .glide__bullet--active {
+              background: rgba(255,255,255,0.98);
+              border-color: rgba(0,0,0,0.35);
+              transform: scale(1.15);
+            }
+          </style>
+          <button class=\"detail-back\" style=\"position:absolute;top:8px;left:8px;padding:8px 12px;border-radius:6px;border:1px solid #999;background:linear-gradient(#f8f8f8,#e6e6e6);cursor:pointer;z-index:21;\">← Back</button>
+          <div class=\"detail-wrap\" style=\"max-width: 900px; margin: 0 auto; padding: 56px 16px 16px; display: grid; grid-template-columns: 1fr 1fr; gap: 16px; align-items: start; position: relative;\">
+            <div class=\"detail-hero\" style=\"position: relative; min-height: 300px; border: 1px solid #ddd; border-radius: 8px; background:#fff; display:flex; align-items:center; justify-content:center; overflow:hidden;\">
+              <div class=\"glide\">
+                <div class=\"glide__track\" data-glide-el=\"track\">
+                  <ul class=\"glide__slides\">
+                    ${slidesHtml}
+                  </ul>
+                </div>
+                <div class=\"glide__arrows\" data-glide-el=\"controls\">
+                  <button class=\"glide__arrow glide__arrow--left\" data-glide-dir=\"<\">◀</button>
+                  <button class=\"glide__arrow glide__arrow--right\" data-glide-dir=\">\">▶</button>
+                </div>
+                <div class=\"glide__bullets\" data-glide-el=\"controls[nav]\">
+                  ${bulletsHtml}
+                </div>
+              </div>
+            </div>
+            <div class=\"detail-info\" style=\"background:#fff;border:1px solid #ddd;border-radius:8px;padding:16px;\">
+              <h2 style="margin:0 0 8px 0; font-size:28px;">${product.title}</h2>
+              <div style="margin:0 0 12px 0; font-size:15px; color:#666; text-transform: none;">${product.subtitle ?? (product.type || '')}</div>
+              <div style="font-weight:800; font-size:20px; color:#111; margin-bottom: 14px;">£${(product.price ?? 0).toFixed(2)}</div>
+              <a class="detail-buy" href="https://elasticstage.com/lew-dunit/releases/whodunit-album" target="_blank" rel="noopener" style="display:inline-block;padding:10px 14px;border-radius:6px;border:1px solid #0b5ed7;background:linear-gradient(#4da3ff,#1d76ff);color:#fff;text-decoration:none;font-weight:700;box-shadow:0 2px 6px rgba(0,0,0,0.15);">Purchase</a>
+            </div>
+            <div class="detail-desc" style="grid-column: 2 / 3; background:#fff;border:1px solid #ddd;border-radius:8px;padding:14px; color:#333; line-height:1.5; font-size:14px;">
+              <div style="font-weight:700; margin-bottom:6px;">Description</div>
+              <div>Limited notes and blurb about the Whodunit? vinyl. Replace this with real product details: pressing info, tracklist highlights, shipping notes, etc.</div>
+            </div>
+          </div>
+        `;
+
+        const heroImg = overlay.querySelector('.detail-hero-img');
+        const backBtn = overlay.querySelector('.detail-back');
+        // Initialize Glide carousel
+        try {
+          const glideEl = overlay.querySelector('.glide');
+          if (glideEl && window.Glide) {
+            const glide = new Glide(glideEl, { type: 'carousel', startAt: 0, perView: 1, gap: 0, animationDuration: 220 });
+            glide.mount();
+            overlay.__glide = glide;
+            // Hide controls if only one image
+            if (images.length < 2) {
+              const arrows = overlay.querySelector('.glide__arrows');
+              const bullets = overlay.querySelector('.glide__bullets');
+              if (arrows) arrows.style.display = 'none';
+              if (bullets) bullets.style.display = 'none';
+            }
+          }
+        } catch (e) { console.warn('Glide init failed', e); }
+
+        function showOverlayNoAnim() {
+          heroImg.style.visibility = 'visible';
+          overlay.style.opacity = '1';
+        }
+
+        // Animate image from source card image to hero image position
+        const srcImg = sourceCard?.querySelector('.product-image');
+        if (!srcImg || reduceMotion) {
+          showOverlayNoAnim();
+        } else {
+          // Ask the card to suspend 3D tilt and settle to flat briefly
+          if (sourceCard) sourceCard.dataset.suspendTilt = '1';
+
+          // First attach overlay hidden to measure target rect
+          overlay.style.opacity = '0';
+          // Keep hero fully hidden until finalize to avoid pre-reveal
+          heroImg.style.visibility = 'hidden';
+          heroImg.style.opacity = '0';
+          // Force layout
+          overlay.getBoundingClientRect();
+
+          // Wait a short moment for the tilt animation to settle to flat
+          setTimeout(() => {
+            const start = srcImg.getBoundingClientRect();
+            const target = overlay.querySelector('.detail-hero')?.getBoundingClientRect();
+            // Create a floating clone
+            const clone = srcImg.cloneNode(true);
+            const comp = getComputedStyle(srcImg);
+            Object.assign(clone.style, {
+              position: 'fixed',
+              left: `${start.left}px`,
+              top: `${start.top}px`,
+              width: `${start.width}px`,
+              height: `${start.height}px`,
+              transformOrigin: 'top left',
+              zIndex: '2147483646',
+              transition: 'transform 360ms cubic-bezier(0.2, 0.8, 0.2, 1), opacity 140ms ease',
+              filter: comp.filter || 'drop-shadow(0px 0px 18px rgba(0,0,0,0.18))'
+            });
+            document.body.appendChild(clone);
+
+            // Track hero loading; keep hidden until finalize to avoid pre-reveal
+            let heroLoaded = heroImg.complete && heroImg.naturalWidth > 0;
+            const markHeroLoaded = () => { heroLoaded = true; };
+            if (!heroLoaded) heroImg.addEventListener('load', markHeroLoaded, { once: true });
+
+            // Show overlay below the clone
+            requestAnimationFrame(() => {
+              overlay.style.opacity = '1';
+              // Compute transform to move/scale clone into target box center
+              const end = target || start;
+              const scaleX = end.width / start.width;
+              const scaleY = end.height / start.height;
+              const dx = end.left - start.left;
+              const dy = end.top - start.top;
+              clone.style.transform = `translate(${dx}px, ${dy}px) scale(${scaleX}, ${scaleY})`;
+
+              const onDone = () => {
+                clone.removeEventListener('transitionend', onDone);
+                // If hero not yet loaded, wait before removing clone to avoid white flash
+                const finalize = () => {
+                  // Crossfade the clone out over the hero to avoid flashing
+                  heroImg.style.visibility = 'visible';
+                  heroImg.style.opacity = '1';
+                  // ensure the next frame sees opacity transition
+                  requestAnimationFrame(() => {
+                    clone.style.opacity = '0';
+                    const removeClone = () => { clone.removeEventListener('transitionend', removeClone); clone.remove(); if (sourceCard) delete sourceCard.dataset.suspendTilt; };
+                    clone.addEventListener('transitionend', removeClone);
+                  });
+                };
+                if (heroLoaded) finalize();
+                else {
+                  const onHero = () => { heroImg.removeEventListener('load', onHero); finalize(); };
+                  heroImg.addEventListener('load', onHero);
+                }
+              };
+              clone.addEventListener('transitionend', onDone);
+            });
+          }, 140);
+        }
+
+        // Back handler
+        backBtn?.addEventListener('click', () => {
+          overlay.style.opacity = '0';
+          // Destroy carousel if present
+          try { overlay.__glide && overlay.__glide.destroy(); } catch {}
+          setTimeout(() => overlay.remove(), 220);
+        }, { once: true });
+      }
 
       function render(filter) {
         const reduceMotion = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
@@ -770,6 +1034,16 @@ function openWindow(title) {
             <div class="product-price" style="position:absolute;left:12px;right:12px;bottom:10px;font-size:14px;color:#222;font-weight:700;text-align:left;pointer-events:none;z-index:3;">£${(p.price ?? 0).toFixed(2)}</div>
           </div>`).join('');
 
+        // Click to open detail for Whodunit? (p6)
+        const whodunitCard = grid.querySelector('.product-item[data-id="p6"]');
+        if (whodunitCard) {
+          whodunitCard.style.cursor = 'pointer';
+          whodunitCard.addEventListener('click', (ev) => {
+            const product = products.find(pp => pp.id === 'p6');
+            if (product) openProductDetail(product, whodunitCard);
+          });
+        }
+
         // Add interactive 3D tilt on hover (skip if reduced motion)
         if (!reduceMotion) {
           const items3d = Array.from(grid.querySelectorAll('.product-item'));
@@ -798,6 +1072,8 @@ function openWindow(title) {
               imgEl.style.objectFit = 'contain';
               imgEl.style.margin = '0';
               imgEl.style.zIndex = '1';
+              // Ensure a base shadow is visible even before any hover/animation occurs
+              imgEl.style.filter = 'drop-shadow(0px 0px 18px rgba(0,0,0,0.18))';
             }
 
             // Create a specular highlight overlay for more realistic 3D lighting
@@ -824,26 +1100,38 @@ function openWindow(title) {
             let currentPop = 0, targetPop = 0;
             let currentScale = 1, targetScale = 1;
 
+            const isSuspended = () => card && card.dataset && card.dataset.suspendTilt === '1';
+
             function apply() {
               raf = null;
+              // If suspended, settle to flat quickly and keep glow hidden
+              if (isSuspended()) {
+                hovered = false;
+                targetRX = 0; targetRY = 0;
+                targetPop = 0; targetScale = 1;
+                glow.style.opacity = '0';
+              }
               // simple spring towards target (even subtler follow)
-              currentRX += (targetRX - currentRX) * 0.12;
-              currentRY += (targetRY - currentRY) * 0.12;
+              const lerp = isSuspended() ? 0.2 : 0.12;
+              currentRX += (targetRX - currentRX) * lerp;
+              currentRY += (targetRY - currentRY) * lerp;
               // Only tilt the image, not the whole card
               if (imgEl) {
                 // Smoothly interpolate pop and scale for a more natural transition
                 targetPop = hovered ? 35 : 0; // stronger pop-out
                 targetScale = hovered ? 1.06 : 1.0; // stronger scale
-                currentPop += (targetPop - currentPop) * 0.12;
-                currentScale += (targetScale - currentScale) * 0.12;
+                currentPop += (targetPop - currentPop) * lerp;
+                currentScale += (targetScale - currentScale) * lerp;
                 imgEl.style.transform = `translateZ(${currentPop.toFixed(2)}px) rotateX(${currentRX.toFixed(3)}deg) rotateY(${currentRY.toFixed(3)}deg) scale(${currentScale.toFixed(3)})`;
                 // Dynamic shadow based on tilt direction using drop-shadow
-                const k = 0.5; // stronger shadow offset factor
-                const dx = (-currentRY) * k; // right tilt -> shadow to left
-                const dy = (currentRX) * k;  // tilt up -> shadow down
-                const blur = 18 + Math.min(Math.abs(currentRX) + Math.abs(currentRY), 40) * 0.60;
-                const alpha = 0.18 + Math.min((Math.abs(currentRX) + Math.abs(currentRY)) / 60, 0.28);
-                imgEl.style.filter = `drop-shadow(${dx.toFixed(1)}px ${dy.toFixed(1)}px ${blur.toFixed(0)}px rgba(0,0,0,${alpha.toFixed(2)}))`;
+                if (!isSuspended()) {
+                  const k = 0.5; // stronger shadow offset factor
+                  const dx = (-currentRY) * k; // right tilt -> shadow to left
+                  const dy = (currentRX) * k;  // tilt up -> shadow down
+                  const blur = 18 + Math.min(Math.abs(currentRX) + Math.abs(currentRY), 40) * 0.60;
+                  const alpha = 0.18 + Math.min((Math.abs(currentRX) + Math.abs(currentRY)) / 60, 0.28);
+                  imgEl.style.filter = `drop-shadow(${dx.toFixed(1)}px ${dy.toFixed(1)}px ${blur.toFixed(0)}px rgba(0,0,0,${alpha.toFixed(2)}))`;
+                }
               }
               // No base ground shadow updates
               if (Math.abs(targetRX - currentRX) > 0.05 || Math.abs(targetRY - currentRY) > 0.05) {
@@ -852,6 +1140,7 @@ function openWindow(title) {
             }
 
             function onMove(e) {
+              if (isSuspended()) return;
               const rect = card.getBoundingClientRect();
               const x = (e.clientX - rect.left) / rect.width;   // 0..1
               const y = (e.clientY - rect.top) / rect.height;   // 0..1
@@ -869,6 +1158,7 @@ function openWindow(title) {
             }
 
             function onEnter() {
+              if (isSuspended()) return;
               hovered = true;
               card.style.zIndex = '2';
               glow.style.opacity = '1';
@@ -892,7 +1182,7 @@ function openWindow(title) {
 
         // Invert & Play
         const items = Array.from(grid.children);
-        // Prepare initial states
+        // Prepare initial states (slide-only, no fade)
         items.forEach((el, idx) => {
           const id = el.getAttribute('data-id');
           const rect = el.getBoundingClientRect();
@@ -902,12 +1192,10 @@ function openWindow(title) {
             const dx = before.left - rect.left;
             const dy = before.top - rect.top;
             el.style.transform = `translate(${dx}px, ${dy}px)`;
-            el.style.opacity = '1';
             el.__delay = 0; // no stagger for moved items
           } else {
             // New item: slight slide-in only, no scale
             el.style.transform = 'translate(0, 12px)';
-            el.style.opacity = '0';
             el.__delay = Math.min(idx * 24, 180); // stagger up to ~180ms
           }
         });
@@ -916,16 +1204,15 @@ function openWindow(title) {
         requestAnimationFrame(() => {
           items.forEach(el => {
             const delay = el.__delay || 0;
-            el.style.transition = `transform 240ms cubic-bezier(0.2, 0.8, 0.2, 1) ${delay}ms, opacity 240ms ease-out ${delay}ms`;
+            // Slide-only transition (no opacity fade)
+            el.style.transition = `transform 240ms cubic-bezier(0.2, 0.8, 0.2, 1) ${delay}ms`;
             el.style.transform = 'translate(0px, 0px)';
-            el.style.opacity = '1';
           });
           // Cleanup helper
           setTimeout(() => {
             items.forEach(el => {
               el.style.transition = '';
               el.style.transform = '';
-              el.style.opacity = '';
               delete el.__delay;
             });
           }, 600);
@@ -936,6 +1223,12 @@ function openWindow(title) {
         btn.addEventListener('click', () => {
           buttons.forEach(b => b.classList.remove('active'));
           btn.classList.add('active');
+          // Close any open detail overlay with a fade when switching tabs
+          const openOverlay = content.querySelector('.store-detail-overlay');
+          if (openOverlay) {
+            openOverlay.style.opacity = '0';
+            setTimeout(() => openOverlay.remove(), 220);
+          }
           render(btn.dataset.filter || 'all');
         });
       });
