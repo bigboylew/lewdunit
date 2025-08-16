@@ -716,7 +716,7 @@ function openWindow(title) {
           <div class="store-filters">
             <button class="store-filter-btn active" data-filter="all">All</button>
             <button class="store-filter-btn" data-filter="vinyl">Vinyl</button>
-            <button class="store-filter-btn" data-filter="cd">CDs</button>
+            <button class="store-filter-btn" data-filter="cd">CD</button>
             <button class="store-filter-btn" data-filter="clothing">Clothing</button>
           </div>
           <div class="store-audio-wrap"></div>
@@ -729,12 +729,8 @@ function openWindow(title) {
     // Build products and filtering
     (function setupStoreProducts() {
       const products = [
-        { id: 'p1', title: 'GOODTRIP', type: 'vinyl', subtitle: 'Vinyl', img: 'goodtrip.webp', price: 1.00 },
-        { id: 'p2', title: 'demodisc_01', type: 'cd', subtitle: 'CD', img: 'demodisccover.webp', price: 1.00 },
-        { id: 'p3', title: 'iso', type: 'cd', subtitle: 'CD', img: 'isocover.webp', price: 1.00 },
-        { id: 'p4', title: 'apple', type: 'vinyl', subtitle: 'Vinyl', img: 'applecover.webp', price: 1.00 },
-        { id: 'p5', title: 'Lew Hoodie', type: 'clothing', subtitle: 'Hoodie', img: 'nocover.jpg', price: 1.00 },
-        { id: 'p6', title: 'Whodunit?', type: 'vinyl', subtitle: 'Standard Black Vinyl', img: 'whodunitvinyl1.webp', images: ['whodunitvinyl1.webp','whodunitvinyl1.png'], price: 27.90 }
+        { id: 'p1', title: 'Whodunit?', type: 'vinyl', subtitle: 'Standard Black Vinyl', img: 'whodunitvinyl1.webp', images: ['whodunitvinyl1.webp','whodunitvinyl1.png'], price: 27.90 },
+        { id: 'p2', title: 'Whodunit?', type: 'cd', subtitle: 'CD', img: 'whodunitvinyl1.webp', images: ['whodunitvinyl1.webp','whodunitvinyl1.png'], price: 12.90 }
       ];
       const grid = content.querySelector('#store-products');
       const buttons = Array.from(content.querySelectorAll('.store-filter-btn'));
@@ -764,12 +760,8 @@ function openWindow(title) {
           content.querySelector('.store-container')?.appendChild(overlay);
         }
 
-        // Build detail inner layout
-        const slidesHtml = images.map((src, i) => `
-              <li class=\"glide__slide\">
-                <img class=\"detail-hero-img\" src=\"${src}\" alt=\"${product.title}\" style=\"max-width: 85%; max-height: 85%; object-fit: contain; visibility: ${i===0?'hidden':'visible'}; opacity: ${i===0?'0':'1'}; transition: opacity 160ms ease;\" />
-              </li>`).join('');
-        const bulletsHtml = images.map((_, i) => `<button class=\"glide__bullet\" data-glide-dir=\"=${i}\"></button>`).join('');
+        // Build detail inner layout (no carousel for now)
+        const heroImgSrc = images[0];
         overlay.innerHTML = `
           <style>
             /* Scoped to the store detail overlay */
@@ -779,108 +771,23 @@ function openWindow(title) {
               box-shadow: 0 8px 28px rgba(0,0,0,0.18), inset 0 1px 0 rgba(255,255,255,0.6);
               backdrop-filter: blur(8px);
               -webkit-backdrop-filter: blur(8px);
-            }
-            .store-detail-overlay .detail-hero .glide { width: 100%; height: 100%; }
-            .store-detail-overlay .glide__track { height: 100%; }
-            .store-detail-overlay .glide__slides {
-              height: 100%;
-              display: flex;
-              align-items: center;
-              justify-content: center;
-            }
-            .store-detail-overlay .glide__slide {
-              display: flex;
-              align-items: center;
-              justify-content: center;
+              height: 300px; /* match previous visual height */
             }
             .store-detail-overlay .detail-hero-img {
               display: block;
               margin: 0 auto;
               max-width: 85%;
               max-height: 85%;
+              height: auto;
               object-fit: contain;
             }
-            /* Aero-style arrows */
-            .store-detail-overlay .glide__arrow {
-              position: absolute;
-              top: 50%;
-              transform: translateY(-50%);
-              border: 1px solid rgba(0,0,0,0.25);
-              border-radius: 8px;
-              padding: 6px 10px;
-              background: linear-gradient(rgba(255,255,255,0.85), rgba(240,240,240,0.85));
-              color: #111;
-              cursor: pointer;
-              box-shadow: 0 2px 8px rgba(0,0,0,0.18);
-              backdrop-filter: blur(6px);
-              -webkit-backdrop-filter: blur(6px);
-              transition: background 120ms ease, transform 120ms ease, box-shadow 120ms ease;
-              z-index: 2;
-            }
-            .store-detail-overlay .glide__arrow:hover {
-              background: linear-gradient(rgba(255,255,255,0.95), rgba(235,235,235,0.95));
-              box-shadow: 0 4px 12px rgba(0,0,0,0.22);
-            }
-            .store-detail-overlay .glide__arrow:active {
-              transform: translateY(-50%) scale(0.98);
-            }
-            .store-detail-overlay .glide__arrow--left { left: 10px; }
-            .store-detail-overlay .glide__arrow--right { right: 10px; }
-            /* Aero-style bullets */
-            .store-detail-overlay .glide__bullets {
-              position: absolute;
-              bottom: 10px;
-              left: 50%;
-              transform: translateX(-50%);
-              display: flex;
-              align-items: center;
-              justify-content: center;
-              gap: 8px;
-              z-index: 2;
-              pointer-events: auto;
-            }
-            .store-detail-overlay .glide__bullet {
-              display: inline-block;
-              width: 10px;
-              height: 10px;
-              aspect-ratio: 1 / 1;
-              border-radius: 50%;
-              border: 1px solid rgba(0,0,0,0.28);
-              background: rgba(255,255,255,0.78);
-              box-shadow: 0 1px 3px rgba(0,0,0,0.22), inset 0 1px 0 rgba(255,255,255,0.6);
-              backdrop-filter: blur(4px);
-              -webkit-backdrop-filter: blur(4px);
-              cursor: pointer;
-              padding: 0;
-              line-height: 0;
-              box-sizing: content-box;
-              transition: transform 120ms ease, background 120ms ease, border-color 120ms ease;
-            }
-            .store-detail-overlay .glide__bullet--active {
-              background: rgba(255,255,255,0.98);
-              border-color: rgba(0,0,0,0.35);
-              transform: scale(1.15);
-            }
           </style>
-          <button class=\"detail-back\" style=\"position:absolute;top:8px;left:8px;padding:8px 12px;border-radius:6px;border:1px solid #999;background:linear-gradient(#f8f8f8,#e6e6e6);cursor:pointer;z-index:21;\">← Back</button>
-          <div class=\"detail-wrap\" style=\"max-width: 900px; margin: 0 auto; padding: 56px 16px 16px; display: grid; grid-template-columns: 1fr 1fr; gap: 16px; align-items: start; position: relative;\">
-            <div class=\"detail-hero\" style=\"position: relative; min-height: 300px; border: 1px solid #ddd; border-radius: 8px; background:#fff; display:flex; align-items:center; justify-content:center; overflow:hidden;\">
-              <div class=\"glide\">
-                <div class=\"glide__track\" data-glide-el=\"track\">
-                  <ul class=\"glide__slides\">
-                    ${slidesHtml}
-                  </ul>
-                </div>
-                <div class=\"glide__arrows\" data-glide-el=\"controls\">
-                  <button class=\"glide__arrow glide__arrow--left\" data-glide-dir=\"<\">◀</button>
-                  <button class=\"glide__arrow glide__arrow--right\" data-glide-dir=\">\">▶</button>
-                </div>
-                <div class=\"glide__bullets\" data-glide-el=\"controls[nav]\">
-                  ${bulletsHtml}
-                </div>
-              </div>
+          <button class="detail-back" style="position:absolute;top:8px;left:8px;padding:8px 12px;border-radius:6px;border:1px solid #999;background:linear-gradient(#f8f8f8,#e6e6e6);cursor:pointer;z-index:21;">← Back</button>
+          <div class="detail-wrap" style="max-width: 900px; margin: 0 auto; padding: 56px 16px 16px; display: grid; grid-template-columns: 1fr 1fr; gap: 16px; align-items: start; position: relative;">
+            <div class="detail-hero" style="position: relative; min-height: 300px; border: 1px solid #ddd; border-radius: 8px; background:#fff; display:flex; align-items:center; justify-content:center; overflow:hidden;">
+              ${heroImgSrc ? `<img class="detail-hero-img" src="${heroImgSrc}" alt="${product.title}" />` : ''}
             </div>
-            <div class=\"detail-info\" style=\"background:#fff;border:1px solid #ddd;border-radius:8px;padding:16px;\">
+            <div class="detail-info" style="background:#fff;border:1px solid #ddd;border-radius:8px;padding:16px;"> 
               <h2 style="margin:0 0 8px 0; font-size:28px;">${product.title}</h2>
               <div style="margin:0 0 12px 0; font-size:15px; color:#666; text-transform: none;">${product.subtitle ?? (product.type || '')}</div>
               <div style="font-weight:800; font-size:20px; color:#111; margin-bottom: 14px;">£${(product.price ?? 0).toFixed(2)}</div>
@@ -895,25 +802,10 @@ function openWindow(title) {
 
         const heroImg = overlay.querySelector('.detail-hero-img');
         const backBtn = overlay.querySelector('.detail-back');
-        // Initialize Glide carousel
-        try {
-          const glideEl = overlay.querySelector('.glide');
-          if (glideEl && window.Glide) {
-            const glide = new Glide(glideEl, { type: 'carousel', startAt: 0, perView: 1, gap: 0, animationDuration: 220 });
-            glide.mount();
-            overlay.__glide = glide;
-            // Hide controls if only one image
-            if (images.length < 2) {
-              const arrows = overlay.querySelector('.glide__arrows');
-              const bullets = overlay.querySelector('.glide__bullets');
-              if (arrows) arrows.style.display = 'none';
-              if (bullets) bullets.style.display = 'none';
-            }
-          }
-        } catch (e) { console.warn('Glide init failed', e); }
+
+        // No carousel: nothing extra to initialize
 
         function showOverlayNoAnim() {
-          heroImg.style.visibility = 'visible';
           overlay.style.opacity = '1';
         }
 
@@ -927,75 +819,21 @@ function openWindow(title) {
 
           // First attach overlay hidden to measure target rect
           overlay.style.opacity = '0';
-          // Keep hero fully hidden until finalize to avoid pre-reveal
-          heroImg.style.visibility = 'hidden';
-          heroImg.style.opacity = '0';
           // Force layout
           overlay.getBoundingClientRect();
 
-          // Wait a short moment for the tilt animation to settle to flat
+          // Simple fade-in (no zoom) for zero aspect morph
           setTimeout(() => {
-            const start = srcImg.getBoundingClientRect();
-            const target = overlay.querySelector('.detail-hero')?.getBoundingClientRect();
-            // Create a floating clone
-            const clone = srcImg.cloneNode(true);
-            const comp = getComputedStyle(srcImg);
-            Object.assign(clone.style, {
-              position: 'fixed',
-              left: `${start.left}px`,
-              top: `${start.top}px`,
-              width: `${start.width}px`,
-              height: `${start.height}px`,
-              transformOrigin: 'top left',
-              zIndex: '2147483646',
-              transition: 'transform 360ms cubic-bezier(0.2, 0.8, 0.2, 1), opacity 140ms ease',
-              filter: comp.filter || 'drop-shadow(0px 0px 18px rgba(0,0,0,0.18))'
-            });
-            document.body.appendChild(clone);
-
-            // Track hero loading; keep hidden until finalize to avoid pre-reveal
-            let heroLoaded = heroImg.complete && heroImg.naturalWidth > 0;
-            const markHeroLoaded = () => { heroLoaded = true; };
-            if (!heroLoaded) heroImg.addEventListener('load', markHeroLoaded, { once: true });
-
-            // Show overlay below the clone
-            requestAnimationFrame(() => {
-              overlay.style.opacity = '1';
-              // Compute transform to move/scale clone into target box center
-              const end = target || start;
-              const scaleX = end.width / start.width;
-              const scaleY = end.height / start.height;
-              const dx = end.left - start.left;
-              const dy = end.top - start.top;
-              clone.style.transform = `translate(${dx}px, ${dy}px) scale(${scaleX}, ${scaleY})`;
-
-              const onDone = () => {
-                clone.removeEventListener('transitionend', onDone);
-                // If hero not yet loaded, wait before removing clone to avoid white flash
-                const finalize = () => {
-                  // Crossfade the clone out over the hero to avoid flashing
-                  heroImg.style.visibility = 'visible';
-                  heroImg.style.opacity = '1';
-                  // ensure the next frame sees opacity transition
-                  requestAnimationFrame(() => {
-                    clone.style.opacity = '0';
-                    const removeClone = () => { clone.removeEventListener('transitionend', removeClone); clone.remove(); if (sourceCard) delete sourceCard.dataset.suspendTilt; };
-                    clone.addEventListener('transitionend', removeClone);
-                  });
-                };
-                if (heroLoaded) finalize();
-                else {
-                  const onHero = () => { heroImg.removeEventListener('load', onHero); finalize(); };
-                  heroImg.addEventListener('load', onHero);
-                }
-              };
-              clone.addEventListener('transitionend', onDone);
-            });
-          }, 140);
+            overlay.style.opacity = '1';
+          }, 80);
         }
 
         // Back handler
         backBtn?.addEventListener('click', () => {
+          // Resume 3D tilt on the source card when exiting detail view
+          if (sourceCard && sourceCard.dataset) {
+            delete sourceCard.dataset.suspendTilt;
+          }
           overlay.style.opacity = '0';
           // Destroy carousel if present
           try { overlay.__glide && overlay.__glide.destroy(); } catch {}
@@ -1034,13 +872,23 @@ function openWindow(title) {
             <div class="product-price" style="position:absolute;left:12px;right:12px;bottom:10px;font-size:14px;color:#222;font-weight:700;text-align:left;pointer-events:none;z-index:3;">£${(p.price ?? 0).toFixed(2)}</div>
           </div>`).join('');
 
-        // Click to open detail for Whodunit? (p6)
-        const whodunitCard = grid.querySelector('.product-item[data-id="p6"]');
-        if (whodunitCard) {
-          whodunitCard.style.cursor = 'pointer';
-          whodunitCard.addEventListener('click', (ev) => {
-            const product = products.find(pp => pp.id === 'p6');
-            if (product) openProductDetail(product, whodunitCard);
+        // Click to open detail for Whodunit? Vinyl (p1)
+        const whodunitVinylCard = grid.querySelector('.product-item[data-id="p1"]');
+        if (whodunitVinylCard) {
+          whodunitVinylCard.style.cursor = 'pointer';
+          whodunitVinylCard.addEventListener('click', () => {
+            const product = products.find(pp => pp.id === 'p1');
+            if (product) openProductDetail(product, whodunitVinylCard);
+          });
+        }
+
+        // Click to open detail for Whodunit? CD (p2)
+        const whodunitCdCard = grid.querySelector('.product-item[data-id="p2"]');
+        if (whodunitCdCard) {
+          whodunitCdCard.style.cursor = 'pointer';
+          whodunitCdCard.addEventListener('click', () => {
+            const product = products.find(pp => pp.id === 'p2');
+            if (product) openProductDetail(product, whodunitCdCard);
           });
         }
 
@@ -1118,7 +966,7 @@ function openWindow(title) {
               // Only tilt the image, not the whole card
               if (imgEl) {
                 // Smoothly interpolate pop and scale for a more natural transition
-                targetPop = hovered ? 35 : 0; // stronger pop-out
+                targetPop = hovered ? 40 : 0; // stronger pop-out
                 targetScale = hovered ? 1.06 : 1.0; // stronger scale
                 currentPop += (targetPop - currentPop) * lerp;
                 currentScale += (targetScale - currentScale) * lerp;
@@ -1243,7 +1091,8 @@ function openWindow(title) {
         'meadowtronic.mp3',
         'checkmiiout.mp3',
         'puzzle.mp3',
-        'slideshow.mp3'
+        'slideshow.mp3',
+        'que.mp3'
       ];
       const audio = new Audio();
       audio.volume = 0.3;
@@ -3317,7 +3166,7 @@ function openStoreSection(section) {
       `
     },
     'cd': {
-      title: 'CDs',
+      title: 'CD',
       content: `
         <div class="product-grid">
           <div class="product-item">
