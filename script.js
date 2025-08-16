@@ -79,8 +79,8 @@ function openWindow(title) {
   if (title === "Music") {
     // Make this window larger to accommodate the grid (responsive on mobile)
     if (isMobile) {
-      win.style.width = '95vw';
-      win.style.height = '90vh';
+      win.style.width = '90vw';
+      win.style.height = '80vh';
       win.style.maxWidth = '';
       win.style.maxHeight = '';
     } else {
@@ -244,8 +244,8 @@ function openWindow(title) {
   } else if (title === "Recycle Bin") {
     // Make this window larger to accommodate content (responsive on mobile)
     if (isMobile) {
-      win.style.width = '95vw';
-      win.style.height = '90vh';
+      win.style.width = '90vw';
+      win.style.height = '80vh';
       win.style.maxWidth = '';
       win.style.maxHeight = '';
     } else {
@@ -258,25 +258,38 @@ function openWindow(title) {
     content.innerHTML = `
       <style>
         .files-root { display: grid; grid-template-columns: 380px 1fr; height: 100%; font-family: inherit; }
-        .files-left { border-right: 1px solid rgba(0,0,0,0.15); background: linear-gradient(#f8f8f8, #e9e9e9); padding: 6px 0; overflow: auto; }
+        .files-left { border-right: 1px solid rgba(0,0,0,0.15); background: linear-gradient(#f8f8f8, #e9e9e9); padding: 0; overflow: auto; }
+        .files-left-header {
+          position: sticky; top: 0; z-index: 2;
+          display: flex; align-items: center; justify-content: space-between;
+          height: 28px;
+          background: linear-gradient(#fdfdfd, #ebebeb);
+          border-bottom: 1px solid rgba(0,0,0,0.15);
+          color: #333; font-size: 12px; font-weight: 600;
+          text-shadow: 0 1px 0 rgba(255,255,255,0.6);
+          padding: 0 8px;
+        }
+        .files-left-header .col-name { padding-left: 15px; /* shift name left */ flex: 1; }
+        .files-left-header .col-size { width: 90px; text-align: right; padding-right: 11px; }
         .files-right { display: grid; grid-template-rows: 1fr auto; }
 
         /* Explorer-like tree (scoped to left panel to avoid global clashes) */
         .files-left .tree { list-style: none; margin: 0; padding: 4px 0 12px 0; }
         .files-left .tree-item { display: block; }
-        .files-left .tree-row { display: flex; align-items: center; gap: 8px; padding: 6px 8px; border-radius: 4px; cursor: default; user-select: none; }
+        .files-left .tree-row { display: flex; align-items: center; gap: 8px; padding: 6px 6px; border-radius: 4px; cursor: default; user-select: none; }
         /* tighter spacing for file rows only */
-        .files-left .tree-row.is-file { padding: 1px 6px; gap: 4px; }
+        .files-left .tree-row.is-file { padding: 1px 4px; gap: 4px; }
         .files-left .tree-row:hover { background: rgba(51,153,255,0.12); }
         .files-left .tree-row.selected { background: rgba(51,153,255,0.18); outline: 1px solid rgba(51,153,255,0.6); }
         .files-left .twisty { width: 12px; display: inline-flex; align-items: center; justify-content: center; font-size: 10px; color: #333; }
         .files-left .icon { width: 18px; height: 18px; object-fit: contain; }
-        .files-left .label { font-size: 13px; color: #222; }
-        .files-left .children { margin: 0; padding-left: 18px; list-style: none; display: none; }
+        .files-left .label { font-size: 13px; color: #222; flex: 1; }
+        .files-left .size { width: 90px; font-size: 12px; color: #666; text-align: right; padding-right: 8px; }
+        .files-left .children { margin: 0; padding-left: 12px; list-style: none; display: none; }
         .files-left .expanded > .children { display: block; }
 
         .preview { display: grid; grid-template-rows: 1fr auto; min-height: 0; }
-        .artwork-wrap { display: flex; align-items: center; justify-content: center; padding: 12px; border-bottom: 1px solid rgba(0,0,0,0.1); }
+        .artwork-wrap { display: flex; align-items: center; justify-content: center; padding: 6px 12px; border-bottom: 1px solid rgba(0,0,0,0.1); }
         .artwork { max-width: 80%; max-height: 100%; box-shadow: 0 2px 12px rgba(0,0,0,0.25); border-radius: 6px; }
         .controls { padding: 10px 12px; display: grid; grid-template-columns: 1fr; gap: 8px; align-items: center; }
         .controls .title { font-size: 13px; color: #333; }
@@ -293,6 +306,10 @@ function openWindow(title) {
 
       <div class="files-root">
         <aside class="files-left">
+          <div class="files-left-header">
+            <span class="col-name">Name</span>
+            <span class="col-size">Size</span>
+          </div>
           <ul class="tree" id="fs-tree"></ul>
         </aside>
         <section class="files-right">
@@ -310,7 +327,6 @@ function openWindow(title) {
         </section>
       </div>
     `;
-
     // Fill the window: remove padding on this window's content only
     content.style.padding = '0';
 
@@ -320,11 +336,11 @@ function openWindow(title) {
     const fsData = [
       {
         name: '23-24', type: 'folder', children: [
-          { name: 'newblades.wav', type: 'audio', wav: 'https://files.catbox.moe/9lgr6h.wav', mp3: 'recyclebinmusic/newblades.mp3', art: 'nocover.jpg' },
-          { name: 'INT.wav',        type: 'audio', wav: 'https://files.catbox.moe/30392j.wav',                                         mp3: 'recyclebinmusic/INT.mp3',        art: 'nocover.jpg' },
-          { name: 'pachinko.wav',   type: 'audio', wav: 'https://files.catbox.moe/5puxbs.wav', mp3: 'recyclebinmusic/pachinko.mp3',                                  art: 'nocover.jpg' },
-          { name: 'birdwatcher.wav',type: 'audio', wav: 'https://files.catbox.moe/a98yzu.wav', mp3: 'recyclebinmusic/birdwatcher.mp3',    art: 'nocover.jpg' },
-          { name: 'BF.wav',         type: 'audio', wav: 'https://files.catbox.moe/vxkqec.wav', mp3: 'recyclebinmusic/BF.mp3',             art: 'nocover.jpg' }
+          { name: 'newblades.wav', type: 'audio', wav: 'https://files.catbox.moe/9lgr6h.wav', mp3: 'recyclebinmusic/newblades.mp3', art: 'nocover.jpg', date: '2024-12-02' },
+          { name: 'INT.wav',        type: 'audio', wav: 'https://files.catbox.moe/30392j.wav',                                         mp3: 'recyclebinmusic/INT.mp3',        art: 'nocover.jpg', date: '2024-11-18' },
+          { name: 'pachinko.wav',   type: 'audio', wav: 'https://files.catbox.moe/5puxbs.wav', mp3: 'recyclebinmusic/pachinko.mp3',                                  art: 'nocover.jpg', date: '2024-10-29' },
+          { name: 'birdwatcher.wav',type: 'audio', wav: 'https://files.catbox.moe/a98yzu.wav', mp3: 'recyclebinmusic/birdwatcher.mp3',    art: 'nocover.jpg', date: '2024-09-14' },
+          { name: 'BF.wav',         type: 'audio', wav: 'https://files.catbox.moe/vxkqec.wav', mp3: 'recyclebinmusic/BF.mp3',             art: 'nocover.jpg', date: '2024-08-22' }
         ]
       },
       { name: "remixes/flips/edits", type: 'folder', children: [] }
@@ -346,6 +362,51 @@ function openWindow(title) {
 
     // Optional default volume
     rbAudio.volume = 0.85;
+
+    // --- Size helpers ---
+    function formatBytes(bytes) {
+      if (!Number.isFinite(bytes) || bytes <= 0) return '';
+      const units = ['B','KB','MB','GB','TB'];
+      let i = 0; let val = bytes;
+      while (val >= 1024 && i < units.length - 1) { val /= 1024; i++; }
+      return `${val.toFixed(val < 10 && i > 0 ? 1 : 0)} ${units[i]}`;
+    }
+
+    async function fetchContentLength(url) {
+      try {
+        const res = await fetch(url, { method: 'HEAD' });
+        const len = res.headers.get('content-length');
+        if (len) return parseInt(len, 10);
+      } catch {}
+      // Fallback: GET with Range to try to read Content-Range total size
+      try {
+        const res2 = await fetch(url, { headers: { 'Range': 'bytes=0-0' } });
+        const cr = res2.headers.get('content-range');
+        // format: bytes 0-0/12345
+        const total = cr && cr.split('/')[1];
+        if (total && !isNaN(total)) return parseInt(total, 10);
+      } catch {}
+      return null;
+    }
+
+    async function resolveSizeUrl(node) {
+      const explicitWav = node.wav || '';
+      const explicitMp3 = node.mp3 || '';
+      const guessedMp3 = explicitMp3 || guessMp3FromWav(explicitWav);
+      // Prefer WAV for size if available, else MP3
+      const candidate = explicitWav || guessedMp3 || explicitMp3;
+      if (!candidate) return null;
+      try { return new URL(candidate, window.location.href).toString(); } catch { return candidate; }
+    }
+
+    async function updateRowSize(node, sizeEl) {
+      // Use existing size as placeholder if provided
+      if (sizeEl.textContent.trim() === '') sizeEl.textContent = '…';
+      const url = await resolveSizeUrl(node);
+      if (!url) return;
+      const bytes = await fetchContentLength(url);
+      if (bytes && Number.isFinite(bytes)) sizeEl.textContent = formatBytes(bytes);
+    }
 
     function renderTree(data, parentUl, path = '') {
       data.forEach(node => {
@@ -392,6 +453,13 @@ function openWindow(title) {
         } else if (node.type === 'audio') {
           row.classList.add('is-file');
           row.style.cursor = 'pointer';
+          // right-aligned size and date labels
+          const sizeSpan = document.createElement('span');
+          sizeSpan.className = 'size';
+          sizeSpan.textContent = node.size || '';
+          row.appendChild(sizeSpan);
+          // async fetch and update
+          updateRowSize(node, sizeSpan);
           row.addEventListener('click', () => selectAudio(node, row, `${path}${node.name}`));
         }
 
@@ -518,8 +586,8 @@ function openWindow(title) {
   } else if (title === "Store") {
     // Make Store window larger by default (responsive on mobile)
     if (isMobile) {
-      win.style.width = '95vw';
-      win.style.height = '90vh';
+      win.style.width = '90vw';
+      win.style.height = '80vh';
       win.style.maxWidth = '';
       win.style.maxHeight = '';
     } else {
@@ -599,7 +667,7 @@ function openWindow(title) {
             0 -2px 6px rgba(0,0,0,0.4);
           border-top: 1px solid rgba(255,255,255,0.15);
           backdrop-filter: blur(10px);
-          -webkit-backdrop-filter: blur(10px);
+          WebkitBackdropFilter: blur(10px);
           z-index: 5;
         }
         .store-bottom-bar::before {
@@ -615,6 +683,8 @@ function openWindow(title) {
           position: relative;
           padding: 0 18px; /* slightly more spacing */
           font-size: 14px; /* tiny bit bigger */
+          border-radius: 0; /* squared corners for Win7-like tabs */
+          transition: background 120ms ease, color 120ms ease, box-shadow 120ms ease;
           color: rgba(255,255,255,0.92);
           border: none;
           background: transparent; /* text-like tabs */
@@ -622,15 +692,38 @@ function openWindow(title) {
           text-shadow: 0 1px 2px rgba(0,0,0,0.6);
           letter-spacing: 0.2px; /* subtle optical centering */
           line-height: 1;
-          border-radius: 4px;
+          border-radius: 0;
           transition: background 0.15s ease, color 0.15s ease;
           display: flex;
           align-items: center; /* vertically center text */
           height: 100%;
           background-origin: content-box; /* underline respects padding insets */
         }
-        .store-filter-btn:hover { color: #ffffff; background: rgba(255,255,255,0.06); }
-        .store-filter-btn.active { color: #cfe8ff; }
+        .store-filter-btn:hover {
+          color: #ffffff;
+          background: rgba(255,255,255,0.12);
+          /* subtle outline + top highlight to emphasize hover */
+          box-shadow: 0 0 0 1px rgba(255,255,255,0.12) inset, inset 0 1px 0 rgba(255,255,255,0.2);
+        }
+        .store-filter-btn.active {
+          color: #ffffff;
+          /* Stronger reversed gradient (darker top, lighter bottom) for a selected/pressed look */
+          background: linear-gradient(#1f6feb, #63a2ff);
+          /* stronger inner shadows for pressed glass effect */
+          box-shadow:
+            0 1px 2px rgba(0,0,0,0.3),            /* outer */
+            inset 0 1px 0 rgba(0,0,0,0.35),        /* top inner shade */
+            inset 0 -1px 0 rgba(255,255,255,0.4),  /* bottom inner gloss */
+            0 0 0 1px rgba(0,0,0,0.35);            /* stroke */
+        }
+        .store-filter-btn.active:hover {
+          background: linear-gradient(#1b5fc8, #74b3ff);
+          box-shadow:
+            0 1px 3px rgba(0,0,0,0.35),
+            inset 0 1px 0 rgba(0,0,0,0.4),
+            inset 0 -1px 0 rgba(255,255,255,0.45),
+            0 0 0 1px rgba(0,0,0,0.4);
+        }
         /* vertical dividers framing each tab label */
         /* left divider for all but the first tab */
         .store-filters .store-filter-btn:not(:first-child)::before {
@@ -939,7 +1032,26 @@ function openWindow(title) {
             });
             card.appendChild(glow);
 
-            // No extra base shadow: rely on image alpha for drop-shadow so transparent images look correct
+            // Add a separate ground shadow element (anchors object to surface)
+            const ground = document.createElement('div');
+            Object.assign(ground.style, {
+              position: 'absolute',
+              left: '50%',
+              bottom: '94px', // sits just under image area (image bottom is ~98px)
+              width: '62%',
+              height: '18px',
+              transform: 'translateX(-50%) scale(1,1)',
+              transformOrigin: 'center',
+              borderRadius: '50% / 60%',
+              background: 'radial-gradient(ellipse at center, rgba(0,0,0,0.36) 0%, rgba(0,0,0,0.22) 42%, rgba(0,0,0,0.0) 72%)',
+              filter: 'blur(10px)',
+              opacity: '0',
+              pointerEvents: 'none',
+              zIndex: '0'
+            });
+            card.appendChild(ground);
+
+            // No extra base shadow beneath image: rely on image alpha + dynamic drop-shadow
 
             let raf = null;
             let targetRX = 0, targetRY = 0;
@@ -947,6 +1059,7 @@ function openWindow(title) {
             let hovered = false;
             let currentPop = 0, targetPop = 0;
             let currentScale = 1, targetScale = 1;
+            let lastNX = 0, lastNY = 0; // store cursor normalized for parallax layers
 
             const isSuspended = () => card && card.dataset && card.dataset.suspendTilt === '1';
 
@@ -966,22 +1079,41 @@ function openWindow(title) {
               // Only tilt the image, not the whole card
               if (imgEl) {
                 // Smoothly interpolate pop and scale for a more natural transition
-                targetPop = hovered ? 40 : 0; // stronger pop-out
+                targetPop = hovered ? 45 : 0; // stronger pop-out
                 targetScale = hovered ? 1.06 : 1.0; // stronger scale
                 currentPop += (targetPop - currentPop) * lerp;
                 currentScale += (targetScale - currentScale) * lerp;
+                // Image at base Z
                 imgEl.style.transform = `translateZ(${currentPop.toFixed(2)}px) rotateX(${currentRX.toFixed(3)}deg) rotateY(${currentRY.toFixed(3)}deg) scale(${currentScale.toFixed(3)})`;
                 // Dynamic shadow based on tilt direction using drop-shadow
                 if (!isSuspended()) {
-                  const k = 0.5; // stronger shadow offset factor
+                  const k = 0.5; // offset factor
                   const dx = (-currentRY) * k; // right tilt -> shadow to left
                   const dy = (currentRX) * k;  // tilt up -> shadow down
                   const blur = 18 + Math.min(Math.abs(currentRX) + Math.abs(currentRY), 40) * 0.60;
-                  const alpha = 0.18 + Math.min((Math.abs(currentRX) + Math.abs(currentRY)) / 60, 0.28);
+                  const alpha = 0.22 + Math.min((Math.abs(currentRX) + Math.abs(currentRY)) / 60, 0.34);
                   imgEl.style.filter = `drop-shadow(${dx.toFixed(1)}px ${dy.toFixed(1)}px ${blur.toFixed(0)}px rgba(0,0,0,${alpha.toFixed(2)}))`;
                 }
               }
-              // No base ground shadow updates
+              // Layered parallax: gloss sits slightly above the image and shifts subtly with cursor
+              if (glow) {
+                const glossZ = currentPop + 12; // above image
+                const parX = lastNX * 4; // subtle XY parallax
+                const parY = lastNY * 2;
+                glow.style.transform = `translateZ(${glossZ.toFixed(2)}px) translate(${parX.toFixed(1)}px, ${parY.toFixed(1)}px) rotateX(${currentRX.toFixed(3)}deg) rotateY(${currentRY.toFixed(3)}deg)`;
+              }
+              // Ground shadow: scale, skew, blur, and fade with tilt/pop
+              if (ground) {
+                const tiltMag = Math.min(Math.abs(currentRX) + Math.abs(currentRY), 40);
+                const sx = 1 + (currentPop / 55); // wider as it pops out
+                const sy = 1 - Math.min(0.35, tiltMag / 180); // flatter with tilt
+                const skew = (currentRY * 0.5);
+                const blurPx = 10 + tiltMag * 0.28; // slightly tighter to read darker
+                const op = Math.min(0.46, 0.22 + (currentPop / 140) + (tiltMag / 200));
+                ground.style.opacity = hovered ? op.toFixed(2) : '0';
+                ground.style.filter = `blur(${blurPx.toFixed(0)}px)`;
+                ground.style.transform = `translateX(-50%) scale(${sx.toFixed(2)}, ${sy.toFixed(2)}) skewX(${skew.toFixed(2)}deg)`;
+              }
               if (Math.abs(targetRX - currentRX) > 0.05 || Math.abs(targetRY - currentRY) > 0.05) {
                 raf = requestAnimationFrame(apply);
               }
@@ -997,6 +1129,7 @@ function openWindow(title) {
               const max = 18; // stronger tilt in degrees
               targetRY = nx * max;       // rotateY left/right
               targetRX = -ny * max;      // rotateX up/down (invert for natural tilt)
+              lastNX = nx; lastNY = ny;  // cache for parallax layers
               // Move specular highlight toward cursor
               const gx = Math.round(x * 100);
               const gy = Math.round(y * 100);
@@ -1010,6 +1143,7 @@ function openWindow(title) {
               hovered = true;
               card.style.zIndex = '2';
               glow.style.opacity = '1';
+              ground.style.opacity = '0.24';
               if (!raf) raf = requestAnimationFrame(apply);
             }
             function onLeave() {
@@ -1017,6 +1151,7 @@ function openWindow(title) {
               targetRX = 0; targetRY = 0;
               card.style.zIndex = '';
               glow.style.opacity = '0';
+              ground.style.opacity = '0';
               if (!raf) raf = requestAnimationFrame(apply);
             }
 
@@ -1212,8 +1347,8 @@ function openWindow(title) {
     })();
 
   
-  } else if (title === "demodisc_01") {
-    // Demodisc window: simple cover + audio player
+  } else if (title === "GOODTRIP") {
+    // Smaller window on mobile
     if (isMobile) {
       win.style.width = '90vw';
       win.style.height = '80vh';
@@ -1221,32 +1356,6 @@ function openWindow(title) {
       win.style.width = '900px';
       win.style.height = '600px';
     }
-
-    content.innerHTML = `
-      <style>
-        .demodisc-wrap { height: 100%; display: flex; flex-direction: column; gap: 16px; padding: 16px; box-sizing: border-box; }
-        .demodisc-head { display:flex; align-items:center; gap:14px; }
-        .demodisc-head img { width:72px; height:72px; object-fit:cover; border-radius:6px; box-shadow:0 2px 6px rgba(0,0,0,0.2); }
-        .demodisc-title { font-size:20px; font-weight:700; }
-        .demodisc-body { flex:1; display:flex; align-items:center; justify-content:center; }
-        .demodisc-cover { max-width: 85%; max-height: 80%; border-radius:8px; box-shadow:0 6px 18px rgba(0,0,0,0.25); }
-        .demodisc-controls { display:flex; gap:12px; align-items:center; justify-content:center; }
-      </style>
-      <div class="demodisc-wrap">
-        <div class="demodisc-head">
-          <img src="demodisccover-hq.png" alt="demodisc_01"/>
-          <div class="demodisc-title">demodisc_01</div>
-        </div>
-        <div class="demodisc-body">
-          <img src="demodisccover-hq.png" class="demodisc-cover" alt="demodisc_01 cover"/>
-        </div>
-        <div class="demodisc-controls">
-          <audio controls src="crackers.mp3" style="width: min(720px, 100%);"></audio>
-        </div>
-      </div>
-    `;
-
-  } else if (title === "GOODTRIP") {
     content.innerHTML = `
       <style>
         .goodtrip-layout {
@@ -1257,6 +1366,14 @@ function openWindow(title) {
           background-size: cover;
         }
     
+        /* Mobile: stack columns to avoid overlap */
+        @media (max-width: 760px) {
+          .goodtrip-layout { flex-direction: column; }
+          .goodtrip-left { width: 100%; min-width: 0; max-width: none; height: auto; }
+          .goodtrip-right { width: 100%; padding-top: 12px; }
+          .left-inner { height: auto; }
+        }
+
         .goodtrip-left {
           width: 320px;
           min-width: 250px;
