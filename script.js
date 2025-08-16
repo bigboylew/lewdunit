@@ -271,6 +271,7 @@ function openWindow(title) {
         .controls .title { font-size: 13px; color: #333; }
         .controls audio { width: 100%; max-width: 640px; }
         /* disabled state for the download button */
+        .download-btn { color: #003366 !important; font-weight: bold; }
         .download-btn[disabled] {
           opacity: 0.5;
           pointer-events: none;
@@ -428,11 +429,39 @@ function openWindow(title) {
         } else {
           downloadBtn.removeAttribute('disabled');
         }
-        try {
-          const a = new URL(dlUrl, window.location.href);
-          const base = (a.pathname.split('/').pop() || 'track');
-          downloadBtn.setAttribute('download', base);
-        } catch { /* noop */ }
+        // Prefer a friendly filename based on the track label instead of remote URL hash
+        // If WAV available, use .wav; otherwise use .mp3
+        let desiredBase = (fileNode && fileNode.name) ? fileNode.name : 'track';
+        if (wavUrl) {
+          desiredBase = desiredBase.replace(/\.[^.]+$/,'') + '.wav';
+        } else if (mp3Url) {
+          desiredBase = desiredBase.replace(/\.[^.]+$/,'') + '.mp3';
+        }
+        downloadBtn.setAttribute('download', desiredBase);
+
+        // Safer cross-origin download with desired filename: fetch to Blob, then trigger a local download.
+        // If CORS blocks fetch, fall back to default behavior.
+        downloadBtn.onclick = async (ev) => {
+          if (!dlUrl || dlUrl === '#') return; // disabled state guards click
+          try {
+            ev.preventDefault();
+            const res = await fetch(dlUrl, { credentials: 'omit', mode: 'cors' });
+            if (!res.ok) throw new Error('Network');
+            const blob = await res.blob();
+            const objectUrl = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = objectUrl;
+            a.download = desiredBase;
+            document.body.appendChild(a);
+            a.click();
+            a.remove();
+            setTimeout(() => URL.revokeObjectURL(objectUrl), 1000);
+          } catch (e) {
+            // Fallback: let the browser handle the cross-origin download (filename may be hashed)
+            downloadBtn.onclick = null; // avoid loop
+            downloadBtn.click();
+          }
+        };
       }
 
       rbAudio.currentTime = 0;
@@ -689,8 +718,8 @@ function openWindow(title) {
     (function setupStoreMusic() {
       const tracks = [
         'goldentime.mp3',
-       // 'shopping_theme_2.mp3',
-       // 'shopping_theme_3.mp3'
+        'shopping_theme_2.mp3',
+        'shopping_theme_3.mp3'
       ];
       const audio = new Audio();
       audio.volume = 0.5;
@@ -1146,7 +1175,7 @@ function openWindow(title) {
               onclick="openAlbumModal()"
             />
         
-            <div class="track-description" id="goodtrip-info-display">
+            <div class="track-description" id="goodtrip-info-display" style="display:none">
               <strong>GOODTRIP</strong>
             </div>
         
@@ -2067,7 +2096,7 @@ const albumConfigs = {
     },
     platformLinks: [
       { href: "https://open.spotify.com/album/2AOE6VeeBrTjAco9KYWeDC?si=2fe7b5b2a6c64891", icon: "spotify-icon.webp", alt: "Spotify" },
-      { href: "https://music.apple.com/gb/album/goodtrip/1785658586", icon: "applemusic-icon.png", alt: "Apple Music" },
+      { href: "https://music.apple.com/gb/album/goodtrip/1785658586", icon: "applemusic-logo.png", alt: "Apple Music" },
       { href: "https://bandcamp.com", icon: "bandcamp-icon.png", alt: "Bandcamp" }
     ],
     background: "graffitibg.gif",
@@ -2204,7 +2233,7 @@ function renderAlbumWindow(config) {
         ${logoHtml}
         <div class="goodtrip-content-inner">
           <img src="${config.modalCover ? config.modalCover : config.albumCover}" alt="${config.title} Album Cover" class="album-cover" onclick="${config.modal ? 'openAlbumModal()' : ''}" />
-          <div class="track-description" id="goodtrip-info-display"><strong>${config.title}</strong></div>
+          <div class="track-description" id="goodtrip-info-display" style="display:none"><strong>${config.title}</strong></div>
           ${platformIcons}
         </div>
         <audio id="goodtrip-audio" src=""></audio>
