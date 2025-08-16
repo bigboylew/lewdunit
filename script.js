@@ -79,8 +79,8 @@ function openWindow(title) {
   if (title === "Music") {
     // Make this window larger to accommodate the grid (responsive on mobile)
     if (isMobile) {
-      win.style.width = '90vw';
-      win.style.height = '80vh';
+      win.style.width = '82vw';
+      win.style.height = '68vh';
       win.style.maxWidth = '';
       win.style.maxHeight = '';
     } else {
@@ -242,13 +242,8 @@ function openWindow(title) {
     window.openMusicSection = openMusicSection;
     window.showMainMusic = showMainMusic;
   } else if (title === "Recycle Bin") {
-    // Make this window larger to accommodate content (responsive on mobile)
-    if (isMobile) {
-      win.style.width = '90vw';
-      win.style.height = '80vh';
-      win.style.maxWidth = '';
-      win.style.maxHeight = '';
-    } else {
+    // Desktop defaults; mobile sizing handled by positionAndClampOnSpawn()
+    if (!isMobile) {
       win.style.width = '900px';
       win.style.height = '600px';
       win.style.maxWidth = 'none';
@@ -301,6 +296,30 @@ function openWindow(title) {
           pointer-events: none;
           cursor: not-allowed;
           color: #888 !important;
+        }
+
+        /* Mobile vertical stack: left panel above right preview */
+        @media (max-width: 760px) {
+          .files-root {
+            display: flex;
+            flex-direction: column;
+            height: 100%;
+          }
+          .files-left {
+            max-height: 45%;
+            flex: 0 0 auto;
+            border-right: none;
+            border-bottom: 1px solid rgba(0,0,0,0.15);
+            overflow: auto;
+          }
+          .files-right {
+            flex: 1 1 auto;
+            display: grid;
+            grid-template-rows: 1fr;
+            min-height: 0; /* enable child overflow */
+          }
+          .preview { min-height: 0; overflow: auto; }
+          .artwork { max-width: 90%; max-height: 60vh; }
         }
       </style>
 
@@ -584,13 +603,8 @@ function openWindow(title) {
     // Render the tree
     renderTree(fsData, tree);
   } else if (title === "Store") {
-    // Make Store window larger by default (responsive on mobile)
-    if (isMobile) {
-      win.style.width = '90vw';
-      win.style.height = '80vh';
-      win.style.maxWidth = '';
-      win.style.maxHeight = '';
-    } else {
+    // Desktop default; mobile sizing handled by positionAndClampOnSpawn()
+    if (!isMobile) {
       win.style.width = '900px';
       win.style.height = '600px';
       win.style.maxWidth = 'none';
@@ -621,6 +635,28 @@ function openWindow(title) {
         }
         @media (min-width: 900px) {
           .product-grid { grid-template-columns: repeat(4, 1fr); }
+        }
+
+        /* Mobile: stack vertically to avoid overlaps */
+        @media (max-width: 760px) {
+          .store-container {
+            display: flex;
+            flex-direction: column;
+            height: 100%;
+          }
+          .product-grid {
+            grid-template-columns: 1fr; /* single column */
+            padding: 12px 12px 0 12px;
+            flex: 1 1 auto; /* take available height */
+          }
+          .store-bottom-bar {
+            position: relative;
+            flex: 0 0 40px; /* keep height */
+            justify-content: flex-start; /* keep controls visible on left */
+            padding: 0 8px; /* slight tighter padding */
+            gap: 8px;
+          }
+          .store-audio-wrap { order: -1; } /* move mute button to far left */
         }
 
         .product-item {
@@ -756,7 +792,7 @@ function openWindow(title) {
           display: flex;
           align-items: center;
           gap: 8px;
-          flex-direction: row-reverse; /* slider left of button */
+          flex-direction: row;
         }
         .store-audio-btn {
           width: 28px;
@@ -772,6 +808,7 @@ function openWindow(title) {
         }
         .store-audio-btn:hover { opacity: 1; }
         .store-audio-btn img { width: 100%; height: 100%; display: block; }
+        /* Volume slider styles (desktop) */
         .store-volume {
           width: 110px;
           height: 4px;
@@ -1219,6 +1256,8 @@ function openWindow(title) {
       render('all');
     })();
 
+    // removed: global mute-only control (desktop uses volume slider; mobile uses mute-only below)
+
     // Shopping music: random track rotation with mute
     (function setupStoreMusic() {
       const tracks = [
@@ -1297,28 +1336,32 @@ function openWindow(title) {
       updateIcon();
       toggleBtn.appendChild(img);
 
-      const vol = document.createElement('input');
-      vol.type = 'range';
-      vol.className = 'store-volume';
-      vol.min = '0';
-      vol.max = '1';
-      vol.step = '0.05';
-      vol.value = String(audio.volume);
+      // Desktop: add volume slider first (so mute is to the right)
+      if (!isMobile) {
+        const vol = document.createElement('input');
+        vol.type = 'range';
+        vol.className = 'store-volume';
+        vol.min = '0';
+        vol.max = '1';
+        vol.step = '0.05';
+        vol.value = String(audio.volume);
+        vol.addEventListener('input', () => {
+          const v = parseFloat(vol.value);
+          audio.volume = isNaN(v) ? 0.5 : Math.max(0, Math.min(1, v));
+          if (audio.volume === 0) {
+            audio.muted = true;
+          } else if (audio.muted) {
+            audio.muted = false;
+          }
+          updateIcon();
+        });
+        controlsWrap.appendChild(vol);
+      }
 
-      vol.addEventListener('input', () => {
-        const v = parseFloat(vol.value);
-        audio.volume = isNaN(v) ? 0.5 : Math.max(0, Math.min(1, v));
-        if (audio.volume === 0) {
-          audio.muted = true;
-        } else if (audio.muted) {
-          audio.muted = false;
-        }
-        updateIcon();
-      });
-
+      // Append mute button last (right of slider on desktop, only control on mobile)
       controlsWrap.appendChild(toggleBtn);
-      controlsWrap.appendChild(vol);
 
+      // Toggle mute on click
       toggleBtn.addEventListener('click', () => {
         audio.muted = !audio.muted;
         updateIcon();
@@ -1348,11 +1391,8 @@ function openWindow(title) {
 
   
   } else if (title === "GOODTRIP") {
-    // Smaller window on mobile
-    if (isMobile) {
-      win.style.width = '90vw';
-      win.style.height = '80vh';
-    } else {
+    // Desktop default; mobile sizing handled by positionAndClampOnSpawn()
+    if (!isMobile) {
       win.style.width = '900px';
       win.style.height = '600px';
     }
@@ -1370,7 +1410,8 @@ function openWindow(title) {
         @media (max-width: 760px) {
           .goodtrip-layout { flex-direction: column; }
           .goodtrip-left { width: 100%; min-width: 0; max-width: none; height: auto; }
-          .goodtrip-right { width: 100%; padding-top: 12px; }
+          .goodtrip-right { width: 100%; padding-top: 0; }
+          .goodtrip-separator { display: none !important; }
           .left-inner { height: auto; }
         }
 
@@ -2063,11 +2104,17 @@ function openWindow(title) {
   // This avoids overriding sizes for windows like Music and Recycle Bin.
   if (!win.style.width || !win.style.height) {
     if (title === "Store") {
-      win.style.width = isMobile ? '85vw' : '700px';
-      win.style.height = isMobile ? '80vh' : '500px';
+      // Desktop defaults only; mobile sizing handled by positionAndClampOnSpawn()
+      if (!isMobile) {
+        win.style.width = '700px';
+        win.style.height = '500px';
+      }
     } else if (title === "GOODTRIP") {
-      win.style.width = isMobile ? '92vw' : '960px';
-      win.style.height = isMobile ? '80vh' : '640px';
+      // Desktop defaults only; mobile sizing handled by positionAndClampOnSpawn()
+      if (!isMobile) {
+        win.style.width = '960px';
+        win.style.height = '640px';
+      }
     } else {
       win.style.width = isMobile ? '80vw' : '300px';
       win.style.height = isMobile ? '50vh' : '200px';
@@ -2129,12 +2176,17 @@ function openWindow(title) {
       .window-content {
         overflow-y: auto !important;
         height: 100% !important;
+        padding: 0 !important; /* remove default content padding that creates a top gap */
+        border-top: 0 !important; /* remove any top border between header and content */
+        background: transparent !important; /* avoid light band from base background */
       }
   
       .goodtrip-layout {
         flex-direction: column !important;
         height: auto !important;
         max-height: none !important;
+        margin-top: 0 !important;
+        padding-top: 0 !important;
       }
   
       .goodtrip-left,
@@ -2145,7 +2197,23 @@ function openWindow(title) {
         overflow-y: auto !important;
       }
   
+      /* Hide any separator-like elements that could cause a light band */
+      .goodtrip-layout hr,
+      .goodtrip-layout .separator,
+      .goodtrip-layout .goodtrip-separator { display: none !important; }
 
+      /* Ensure first child in right pane doesn't push a gap */
+      .goodtrip-right > *:first-child { margin-top: 0 !important; }
+      .goodtrip-right .lcd-display, .goodtrip-right .lcd-track-info { margin-top: 0 !important; }
+      .goodtrip-right { border-top: 0 !important; }
+
+      /* Remove header dividing line/shadow for GOODTRIP on mobile */
+      .window[data-title="GOODTRIP"] .window-header {
+        border-bottom: 0 !important;
+        box-shadow: none !important;
+      }
+
+      
   
       .left-inner {
         flex-direction: column !important;
@@ -2176,6 +2244,8 @@ function openWindow(title) {
 
   makeDraggable(win);
   document.body.appendChild(win);
+  // Clamp and center within desktop on spawn (especially for mobile)
+  positionAndClampOnSpawn(win);
 
   animateWindowSpawn(win);
   setTimeout(() => { bringToFront(win); }, 0);
@@ -2288,6 +2358,47 @@ function makeDraggable(el) {
 
   window.addEventListener('pointerup', () => { isDragging = false; });
   window.addEventListener('pointercancel', () => { isDragging = false; });
+}
+
+// Ensure a newly spawned window is within the visible desktop and reasonably centered
+function positionAndClampOnSpawn(el) {
+  try {
+    const desktop = document.getElementById('desktop');
+    const bounds = desktop ? desktop.getBoundingClientRect() : { left: 0, top: 0, width: window.innerWidth, height: window.innerHeight };
+
+    // Apply a smaller default size on mobile before centering/clamping
+    if (isMobile) {
+      el.style.maxWidth = '92vw';
+      el.style.maxHeight = '84vh';
+      el.style.width = '78vw';
+      el.style.height = '62vh';
+    }
+
+    // Initial center
+    const w = el.offsetWidth;
+    const h = el.offsetHeight;
+    let left = Math.max(0, (bounds.width - w) / 2);
+    let top = Math.max(0, (bounds.height - h) / 2);
+
+    // Clamp inside bounds
+    left = Math.min(left, Math.max(0, bounds.width - w));
+    top = Math.min(top, Math.max(0, bounds.height - h));
+
+    el.style.position = 'absolute';
+    el.style.left = `${left}px`;
+    el.style.top = `${top}px`;
+
+    // For mobile, add a small padding to avoid touching edges
+    if (isMobile) {
+      const pad = 6;
+      const maxLeft = Math.max(0, bounds.width - el.offsetWidth - pad);
+      const maxTop = Math.max(0, bounds.height - el.offsetHeight - pad);
+      const newLeft = Math.min(Math.max(pad, parseFloat(el.style.left) || 0), maxLeft);
+      const newTop = Math.min(Math.max(pad, parseFloat(el.style.top) || 0), maxTop);
+      el.style.left = `${newLeft}px`;
+      el.style.top = `${newTop}px`;
+    }
+  } catch (_) {}
 }
 
 function updateClock() {
@@ -3204,6 +3315,8 @@ function renderAlbumWindow(config) {
   });
   makeDraggable(win);
   document.body.appendChild(win);
+  // Clamp and center within desktop on spawn (especially for mobile)
+  positionAndClampOnSpawn(win);
   animateWindowSpawn(win);
   setTimeout(() => { bringToFront(win); }, 0);
   addTaskbarIcon(config.title);

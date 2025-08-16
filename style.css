@@ -866,11 +866,18 @@ body.loading * {
     padding: 10px;
   }
 
-  .window {
-    width: 95vw !important;
-    height: 90vh !important;
-    max-width: none !important;
-    max-height: none !important;
+  /* Removed mobile .window width/height override to let JS helper control size */
+
+  /* Hide GOODTRIP left cassette area on mobile and make right pane full */
+  .goodtrip-left,
+  .goodtrip-separator {
+    display: none !important;
+  }
+  .goodtrip-right {
+    width: 100% !important;
+    height: auto !important;
+    min-height: 0 !important;
+    flex: 1 1 auto;
   }
 }
 
