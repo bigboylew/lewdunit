@@ -2096,6 +2096,24 @@ function openWindow(title) {
 
 
 
+  } else if (title === "Whodunit?") {
+    if (!isMobile) {
+      win.style.width = '760px';
+      win.style.height = '520px';
+    }
+    content.innerHTML = `
+      <style>
+        .whodunit-wrap { height: 100%; display: flex; align-items: center; justify-content: center; flex-direction: column; gap: 12px; }
+        .whodunit-wrap h2 { margin: 0; color: #222; text-shadow: 0 1px 0 rgba(255,255,255,0.6); }
+        .whodunit-art { max-width: 380px; width: 90%; height: auto; box-shadow: 0 6px 18px rgba(0,0,0,0.4); border-radius: 6px; image-rendering: auto !important; }
+        .whodunit-note { color: #333; font-size: 14px; text-align: center; }
+      </style>
+      <div class="whodunit-wrap">
+        <h2>Whodunit?</h2>
+        <img class="whodunit-art" src="whodunitvinyl1.webp" alt="Whodunit?" />
+        <div class="whodunit-note">More coming soon.</div>
+      </div>
+    `;
   } else {
     content.innerHTML = `<p>This is the ${title} window.</p>`;
   }
@@ -2114,6 +2132,11 @@ function openWindow(title) {
       if (!isMobile) {
         win.style.width = '960px';
         win.style.height = '640px';
+      }
+    } else if (title === "Whodunit?") {
+      if (!isMobile) {
+        win.style.width = '760px';
+        win.style.height = '520px';
       }
     } else {
       win.style.width = isMobile ? '80vw' : '300px';
@@ -2525,6 +2548,12 @@ function addTaskbarIcon(title) {
       break;
     case 'Socials':
       imgSrc = 'socials.png';
+      break;
+    case 'Whodunit?':
+      imgSrc = 'bug.png';
+      break;
+    case 'demodisc_01':
+      imgSrc = 'demodisc01.png';
       break;
   }
 
