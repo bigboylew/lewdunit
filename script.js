@@ -90,6 +90,10 @@ function openWindow(title) {
       win.style.maxHeight = 'none';
     }
 
+    // Prevent outer scrollbars; we'll scroll only the products grid
+    win.style.overflow = 'hidden';
+    content.style.overflow = 'hidden';
+
     content.innerHTML = `
       <style>
         .music-container {
@@ -512,143 +516,154 @@ function openWindow(title) {
     // Render the tree
     renderTree(fsData, tree);
   } else if (title === "Store") {
+    // Make Store window larger by default (responsive on mobile)
+    if (isMobile) {
+      win.style.width = '95vw';
+      win.style.height = '90vh';
+      win.style.maxWidth = '';
+      win.style.maxHeight = '';
+    } else {
+      win.style.width = '900px';
+      win.style.height = '600px';
+      win.style.maxWidth = 'none';
+      win.style.maxHeight = 'none';
+    }
     content.innerHTML = `
       <style>
         .store-container {
-          padding: 20px;
-          /* background removed to inherit window background */
-          position: relative; /* allow positioning of mute button */
-          font-family: inherit; /* match desktop UI font */
-        }
-        
-        /* store header removed */
-        
-        .store-sections {
+          padding: 0; /* remove window/content gap */
+          position: relative;
+          font-family: inherit;
+          height: 100%;
+          box-sizing: border-box;
           display: grid;
-          grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
-          gap: 24px;
-          max-width: 900px;
-          margin: 0 auto;
-        }
-        
-        .store-section {
-          background: transparent;
-          border-radius: 0;
-          padding: 8px 0;
-          box-shadow: none;
-          transition: transform 0.2s ease;
-          cursor: pointer;
-          border: none;
-          text-align: center;
-        }
-        
-        .store-section:hover {
-          transform: translateY(-2px);
+          grid-template-rows: 1fr 40px; /* products area + fixed bottom bar */
+          gap: 0;
+          overflow: hidden; /* prevent outer scrollbar */
         }
 
-        /* Blue glow on hover for image and title */
-        .store-section:hover .section-icon {
-          filter: drop-shadow(0 0 10px rgba(51,153,255,0.9));
-        }
-        .store-section:hover .section-title {
-          color: #3399ff;
-          text-shadow: 0 0 6px rgba(51,153,255,0.6);
-        }
-        
-        .section-icon {
-          width: 120px;
-          height: 120px;
-          margin: 0 auto 16px auto;
-          display: block;
-          filter: drop-shadow(0 2px 4px rgba(0,0,0,0.2));
-        }
-        
-        .section-title {
-          font-family: inherit; /* match desktop UI font */
-          font-size: 20px;
-          font-weight: bold;
-          text-align: center;
-          margin-bottom: 8px;
-          color: #333;
-        }
-        
-        .section-content {
-        }
-        
-        .section-header {
-          display: flex;
-          align-items: center;
-          margin-bottom: 20px;
-          gap: 15px;
-          padding: 0 20px;
-        }
-        
-        .back-button {
-          background: linear-gradient(to bottom, #e8e8e8, #d0d0d0);
-          border: 1px solid #999;
-          color: #333;
-          padding: 8px 12px;
-          border-radius: 4px;
-          cursor: pointer;
-          font-size: 12px;
-          transition: background 0.2s ease;
-        }
-        
-        .back-button:hover {
-          background: linear-gradient(to bottom, #f0f0f0, #e0e0e0);
-        }
-        
-        #section-title {
-          margin: 0;
-          color: #333;
-          font-size: 24px;
-        }
-        
-        #section-body {
-          color: #333;
-          line-height: 1.6;
-          padding: 0 20px;
-        }
-        
+        /* Products grid */
         .product-grid {
           display: grid;
-          grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
-          gap: 20px;
-          margin-top: 20px;
+          grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+          gap: 16px;
+          overflow: auto; /* scroll only the products area */
+          padding: 20px 20px 0 20px; /* inner padding for content spacing */
+          align-items: start; /* prevent items stretching vertically */
         }
-        
+        @media (min-width: 900px) {
+          .product-grid { grid-template-columns: repeat(4, 1fr); }
+        }
+
         .product-item {
           background: white;
           border: 1px solid #ddd;
           border-radius: 8px;
-          padding: 15px;
+          padding: 12px;
           text-align: center;
-          box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+          box-shadow: 0 1px 2px rgba(0,0,0,0.06); /* subtler so image shadow reads clearly */
+          color: #222;
+          will-change: transform, opacity;
+          transition: transform 240ms cubic-bezier(0.2, 0.8, 0.2, 1), opacity 240ms ease-out;
+          position: relative;
+          height: 210px; /* slightly taller card */
         }
-        
-        .product-image {
-          width: 100%;
-          height: 150px;
-          background: #f5f5f5;
-          border-radius: 4px;
-          margin-bottom: 10px;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          color: #999;
-          font-size: 12px;
+        /* The <img class="product-image"> itself, no wrapper */
+        .product-image { display: block; background: transparent; }
+        .product-title { font-weight: 600; margin: 6px 0 2px; }
+        .product-type { font-size: 12px; color: #666; }
+
+        @media (prefers-reduced-motion: reduce) {
+          .product-item { transition: none !important; }
         }
 
-        /* Window-level audio controls (bottom-right of the Store window) */
-        .store-audio-wrap {
-          position: absolute;
-          right: 12px;
-          bottom: 8px;
+        /* Bottom taskbar-style filter bar */
+        .store-bottom-bar {
+          position: static; /* fixed in grid row */
+          height: 40px; /* slimmer bar */
+          padding: 0 12px;
           display: flex;
           align-items: center;
-          gap: 6px;
-          flex-direction: row-reverse; /* show slider to the left of button */
-          z-index: 20;
+          justify-content: space-between;
+          gap: 12px;
+          background: linear-gradient(
+            to top,
+            rgba(40, 40, 40, 0.7) 0%,
+            rgba(70, 70, 70, 0.6) 30%,
+            rgba(120, 120, 120, 0.45) 70%,
+            rgba(180, 180, 180, 0.3) 100%
+          );
+          box-shadow:
+            inset 0 1px 2px rgba(255,255,255,0.15),
+            inset 0 -1px 4px rgba(0,0,0,0.4),
+            0 -2px 6px rgba(0,0,0,0.4);
+          border-top: 1px solid rgba(255,255,255,0.15);
+          backdrop-filter: blur(10px);
+          -webkit-backdrop-filter: blur(10px);
+          z-index: 5;
+        }
+        .store-bottom-bar::before {
+          content: "";
+          position: absolute;
+          top: 0; left: 0; right: 0;
+          height: 8px;
+          background: linear-gradient(to bottom, rgba(255,255,255,0.25), rgba(255,255,255,0));
+          pointer-events: none;
+        }
+        .store-filters { display: flex; align-items: center; gap: 0; flex-wrap: nowrap; height: 100%; }
+        .store-filter-btn {
+          position: relative;
+          padding: 0 18px; /* slightly more spacing */
+          font-size: 14px; /* tiny bit bigger */
+          color: rgba(255,255,255,0.92);
+          border: none;
+          background: transparent; /* text-like tabs */
+          cursor: pointer;
+          text-shadow: 0 1px 2px rgba(0,0,0,0.6);
+          letter-spacing: 0.2px; /* subtle optical centering */
+          line-height: 1;
+          border-radius: 4px;
+          transition: background 0.15s ease, color 0.15s ease;
+          display: flex;
+          align-items: center; /* vertically center text */
+          height: 100%;
+          background-origin: content-box; /* underline respects padding insets */
+        }
+        .store-filter-btn:hover { color: #ffffff; background: rgba(255,255,255,0.06); }
+        .store-filter-btn.active { color: #cfe8ff; }
+        /* vertical dividers framing each tab label */
+        /* left divider for all but the first tab */
+        .store-filters .store-filter-btn:not(:first-child)::before {
+          content: "";
+          position: absolute;
+          left: 0;
+          top: 50%;
+          transform: translateY(-50%);
+          width: 1px;
+          height: 24px;
+          background: rgba(255,255,255,0.35);
+          box-shadow: 1px 0 0 rgba(0,0,0,0.35);
+        }
+        /* right divider for all but the last tab */
+        .store-filters .store-filter-btn:not(:last-child)::after {
+          content: "";
+          position: absolute;
+          right: 0;
+          top: 50%;
+          transform: translateY(-50%);
+          width: 1px;
+          height: 24px; /* a bit taller to match larger text */
+          background: rgba(255,255,255,0.35);
+          box-shadow: 1px 0 0 rgba(0,0,0,0.35);
+        }
+        /* underline removed per request */
+
+        /* Audio controls area inside bar */
+        .store-audio-wrap {
+          display: flex;
+          align-items: center;
+          gap: 8px;
+          flex-direction: row-reverse; /* slider left of button */
         }
         .store-audio-btn {
           width: 28px;
@@ -659,66 +674,274 @@ function openWindow(title) {
           margin: 0;
           cursor: pointer;
           filter: drop-shadow(0 1px 2px rgba(0,0,0,0.5));
-          opacity: 0.55;
+          opacity: 0.55; /* a bit more transparent when idle */
           transition: opacity 0.15s ease;
         }
         .store-audio-btn:hover { opacity: 1; }
-        .store-audio-btn img { width: 100%; height: 100%; display: block; transition: filter 0.15s ease; }
+        .store-audio-btn img { width: 100%; height: 100%; display: block; }
         .store-volume {
-          width: 80px;
+          width: 110px;
           height: 4px;
           appearance: none;
-          background: #bbb; /* solid color */
+          background: #bbb;
           border-radius: 2px;
           outline: none;
-          opacity: 0; /* hidden by default */
+        }
+        .store-volume::-webkit-slider-runnable-track { height: 4px; background: #bbb; border-radius: 2px; }
+        .store-volume::-webkit-slider-thumb {
+          -webkit-appearance: none; appearance: none;
+          width: 12px; height: 12px; border-radius: 50%;
+          background: #666;
+          margin-top: -4px;
+          box-shadow: 0 0 4px rgba(0,0,0,0.5);
+          opacity: 0.65; /* semi-transparent orb */
           transition: opacity 0.15s ease;
         }
-        /* Show slider when hovering the control area (button or slider) */
-        .store-audio-wrap:hover .store-volume { opacity: 1; }
-        /* WebKit slider styling */
-        .store-volume::-webkit-slider-runnable-track { height: 4px; background: #bbb; border-radius: 2px; }
-        .store-volume::-webkit-slider-thumb { -webkit-appearance: none; appearance: none; width: 10px; height: 10px; border-radius: 50%; background: #666; margin-top: -3px; box-shadow: 0 0 4px rgba(0,0,0,0.5); }
-        /* Firefox */
+        .store-volume:hover::-webkit-slider-thumb { opacity: 1; }
         .store-volume::-moz-range-track { height: 4px; background: #bbb; border-radius: 2px; }
-        .store-volume::-moz-range-thumb { width: 10px; height: 10px; border: none; border-radius: 50%; background: #666; box-shadow: 0 0 4px rgba(0,0,0,0.5); }
-        /* Blue tint on hover */
-        .store-audio-btn:hover img {
-          filter: hue-rotate(200deg) saturate(2) brightness(1.05);
+        .store-volume::-moz-range-thumb {
+          width: 12px; height: 12px; border: none; border-radius: 50%;
+          background: #666;
+          box-shadow: 0 0 4px rgba(0,0,0,0.5);
+          opacity: 0.65;
+          transition: opacity 0.15s ease;
         }
+        .store-volume:hover::-moz-range-thumb { opacity: 1; }
       </style>
-      
+
       <div class="store-container">
-        <div class="store-sections" id="store-main-sections">
-          <div class="store-section" onclick="openStoreSection('vinyl')">
-            <img src="vinyl.gif" alt="Vinyl" class="section-icon" />
-            <div class="section-title">Vinyl</div>
+        <div class="product-grid" id="store-products"></div>
+
+        <div class="store-bottom-bar">
+          <div class="store-filters">
+            <button class="store-filter-btn active" data-filter="all">All</button>
+            <button class="store-filter-btn" data-filter="vinyl">Vinyl</button>
+            <button class="store-filter-btn" data-filter="cd">CDs</button>
+            <button class="store-filter-btn" data-filter="clothing">Clothing</button>
           </div>
-          
-          <div class="store-section" onclick="openStoreSection('cd')">
-            <img src="cdicon.gif" alt="CDs" class="section-icon" />
-            <div class="section-title">CDs</div>
-          </div>
-          
-          <!-- Clothing section temporarily disabled
-          <div class="store-section" onclick="openStoreSection('clothes')">
-            <img src="https://img.icons8.com/windows/64/t-shirt.png" alt="Clothing" class="section-icon" />
-            <div class="section-title">Clothing</div>
-          </div>
-          -->
-        </div>
-        
-        <div class="section-content" id="section-content" style="display: none;">
-          <div class="section-header">
-            <button class="back-button" onclick="showMainStore()">← Back to Store</button>
-            <h2 id="section-title"></h2>
-          </div>
-          <div id="section-body"></div>
+          <div class="store-audio-wrap"></div>
         </div>
       </div>
     `;
     // Use the window's scrollbar and remove default padding
     win.classList.add('no-padding');
+
+    // Build products and filtering
+    (function setupStoreProducts() {
+      const products = [
+        { id: 'p1', title: 'GOODTRIP', type: 'vinyl', subtitle: 'Vinyl', img: 'goodtrip.webp', price: 1.00 },
+        { id: 'p2', title: 'demodisc_01', type: 'cd', subtitle: 'CD', img: 'demodisccover.webp', price: 1.00 },
+        { id: 'p3', title: 'iso', type: 'cd', subtitle: 'CD', img: 'isocover.webp', price: 1.00 },
+        { id: 'p4', title: 'apple', type: 'vinyl', subtitle: 'Vinyl', img: 'applecover.webp', price: 1.00 },
+        { id: 'p5', title: 'Lew Hoodie', type: 'clothing', subtitle: 'Hoodie', img: 'nocover.jpg', price: 1.00 },
+        { id: 'p6', title: 'Whodunit?', type: 'vinyl', subtitle: 'Standard Black Vinyl', img: 'whodunitvinyl1.webp', price: 27.90 }
+      ];
+      const grid = content.querySelector('#store-products');
+      const buttons = Array.from(content.querySelectorAll('.store-filter-btn'));
+
+      function render(filter) {
+        const reduceMotion = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+        // First: capture positions of existing items by id
+        const prev = new Map();
+        const prevItems = Array.from(grid.children);
+        prevItems.forEach(el => {
+          const id = el.getAttribute('data-id');
+          if (!id) return;
+          const rect = el.getBoundingClientRect();
+          prev.set(id, rect);
+        });
+
+        const f = (filter && filter !== 'all') ? filter : null;
+        const list = f ? products.filter(p => p.type === f) : products;
+
+        // Last: replace content with new list (include data-id for matching)
+        // Note: image rendered directly (no inner box) for cleaner 3D effect
+        // Title and price pinned to bottom of the card in a fixed bar
+        grid.innerHTML = list.map(p => `
+          <div class="product-item" data-id="${p.id}" data-type="${p.type}">
+            <div class="product-image-wrap" style="position:absolute;left:12px;right:12px;top:8px;bottom:98px;display:flex;align-items:center;justify-content:center;">
+              ${p.img ? `<img class=\"product-image\" src=\"${p.img}\" alt=\"${p.title}\">` : ''}
+            </div>
+            <div class="product-divider" style="position:absolute;left:12px;right:12px;bottom:90px;height:1px;background:rgba(0,0,0,0.12);"></div>
+            <div class="product-info" style="position:absolute;left:12px;right:12px;bottom:44px;display:flex;flex-direction:column;align-items:flex-start;gap:1px;pointer-events:none;z-index:3;">
+              <div class="product-title" style="margin:0;font-size:20px;line-height:1.14;font-weight:800;letter-spacing:0.2px;text-align:left;">${p.title}</div>
+              <div class="product-subtitle" style="margin:0;font-size:13px;line-height:1.1;color:#777;text-transform:capitalize;">${p.subtitle ?? (p.type || '')}</div>
+            </div>
+            <div class="product-price" style="position:absolute;left:12px;right:12px;bottom:10px;font-size:14px;color:#222;font-weight:700;text-align:left;pointer-events:none;z-index:3;">£${(p.price ?? 0).toFixed(2)}</div>
+          </div>`).join('');
+
+        // Add interactive 3D tilt on hover (skip if reduced motion)
+        if (!reduceMotion) {
+          const items3d = Array.from(grid.querySelectorAll('.product-item'));
+          items3d.forEach(card => {
+            // prep styles
+            card.style.perspective = '600px';
+            card.style.transformStyle = 'preserve-3d';
+            card.style.position = 'relative';
+            card.style.overflow = 'visible'; // allow image pop-out beyond card
+            // Keep cards slimmer and reserve space for the fixed info bar
+            card.style.minHeight = '';
+            card.style.paddingBottom = '60px';
+            const imgEl = card.querySelector('.product-image');
+            if (imgEl) {
+              imgEl.style.transform = 'translateZ(0px)';
+              imgEl.style.transformStyle = 'preserve-3d';
+              imgEl.style.willChange = 'transform, filter';
+              imgEl.style.transformOrigin = 'center center';
+              imgEl.style.display = 'block';
+              imgEl.style.pointerEvents = 'none';
+              // Centered in wrapper; allow it to be larger but contained
+              imgEl.style.maxHeight = '100%';
+              imgEl.style.maxWidth = '100%';
+              imgEl.style.width = 'auto';
+              imgEl.style.height = 'auto';
+              imgEl.style.objectFit = 'contain';
+              imgEl.style.margin = '0';
+              imgEl.style.zIndex = '1';
+            }
+
+            // Create a specular highlight overlay for more realistic 3D lighting
+            const glow = document.createElement('div');
+            Object.assign(glow.style, {
+              position: 'absolute',
+              left: '0', top: '0', right: '0', bottom: '0',
+              pointerEvents: 'none',
+              borderRadius: '6px',
+              opacity: '0',
+              transition: 'opacity 120ms ease-out',
+              willChange: 'opacity, background',
+              mixBlendMode: 'screen',
+              zIndex: '2'
+            });
+            card.appendChild(glow);
+
+            // No extra base shadow: rely on image alpha for drop-shadow so transparent images look correct
+
+            let raf = null;
+            let targetRX = 0, targetRY = 0;
+            let currentRX = 0, currentRY = 0;
+            let hovered = false;
+            let currentPop = 0, targetPop = 0;
+            let currentScale = 1, targetScale = 1;
+
+            function apply() {
+              raf = null;
+              // simple spring towards target (even subtler follow)
+              currentRX += (targetRX - currentRX) * 0.12;
+              currentRY += (targetRY - currentRY) * 0.12;
+              // Only tilt the image, not the whole card
+              if (imgEl) {
+                // Smoothly interpolate pop and scale for a more natural transition
+                targetPop = hovered ? 35 : 0; // stronger pop-out
+                targetScale = hovered ? 1.06 : 1.0; // stronger scale
+                currentPop += (targetPop - currentPop) * 0.12;
+                currentScale += (targetScale - currentScale) * 0.12;
+                imgEl.style.transform = `translateZ(${currentPop.toFixed(2)}px) rotateX(${currentRX.toFixed(3)}deg) rotateY(${currentRY.toFixed(3)}deg) scale(${currentScale.toFixed(3)})`;
+                // Dynamic shadow based on tilt direction using drop-shadow
+                const k = 0.5; // stronger shadow offset factor
+                const dx = (-currentRY) * k; // right tilt -> shadow to left
+                const dy = (currentRX) * k;  // tilt up -> shadow down
+                const blur = 18 + Math.min(Math.abs(currentRX) + Math.abs(currentRY), 40) * 0.60;
+                const alpha = 0.18 + Math.min((Math.abs(currentRX) + Math.abs(currentRY)) / 60, 0.28);
+                imgEl.style.filter = `drop-shadow(${dx.toFixed(1)}px ${dy.toFixed(1)}px ${blur.toFixed(0)}px rgba(0,0,0,${alpha.toFixed(2)}))`;
+              }
+              // No base ground shadow updates
+              if (Math.abs(targetRX - currentRX) > 0.05 || Math.abs(targetRY - currentRY) > 0.05) {
+                raf = requestAnimationFrame(apply);
+              }
+            }
+
+            function onMove(e) {
+              const rect = card.getBoundingClientRect();
+              const x = (e.clientX - rect.left) / rect.width;   // 0..1
+              const y = (e.clientY - rect.top) / rect.height;   // 0..1
+              const nx = (x - 0.5) * 2; // -1..1
+              const ny = (y - 0.5) * 2; // -1..1
+              const max = 18; // stronger tilt in degrees
+              targetRY = nx * max;       // rotateY left/right
+              targetRX = -ny * max;      // rotateX up/down (invert for natural tilt)
+              // Move specular highlight toward cursor
+              const gx = Math.round(x * 100);
+              const gy = Math.round(y * 100);
+              // Weaken the highlight a bit
+              glow.style.background = `radial-gradient( circle at ${gx}% ${gy}%, rgba(255,255,255,0.16), rgba(255,255,255,0.05) 14%, rgba(255,255,255,0.0) 34% )`;
+              if (!raf) raf = requestAnimationFrame(apply);
+            }
+
+            function onEnter() {
+              hovered = true;
+              card.style.zIndex = '2';
+              glow.style.opacity = '1';
+              if (!raf) raf = requestAnimationFrame(apply);
+            }
+            function onLeave() {
+              hovered = false;
+              targetRX = 0; targetRY = 0;
+              card.style.zIndex = '';
+              glow.style.opacity = '0';
+              if (!raf) raf = requestAnimationFrame(apply);
+            }
+
+            card.addEventListener('mousemove', onMove);
+            card.addEventListener('mouseenter', onEnter);
+            card.addEventListener('mouseleave', onLeave);
+          });
+        }
+
+        if (reduceMotion) return; // Skip animation
+
+        // Invert & Play
+        const items = Array.from(grid.children);
+        // Prepare initial states
+        items.forEach((el, idx) => {
+          const id = el.getAttribute('data-id');
+          const rect = el.getBoundingClientRect();
+          const before = id ? prev.get(id) : null;
+          el.style.transition = 'none';
+          if (before) {
+            const dx = before.left - rect.left;
+            const dy = before.top - rect.top;
+            el.style.transform = `translate(${dx}px, ${dy}px)`;
+            el.style.opacity = '1';
+            el.__delay = 0; // no stagger for moved items
+          } else {
+            // New item: slight slide-in only, no scale
+            el.style.transform = 'translate(0, 12px)';
+            el.style.opacity = '0';
+            el.__delay = Math.min(idx * 24, 180); // stagger up to ~180ms
+          }
+        });
+
+        // Next frame, animate to identity
+        requestAnimationFrame(() => {
+          items.forEach(el => {
+            const delay = el.__delay || 0;
+            el.style.transition = `transform 240ms cubic-bezier(0.2, 0.8, 0.2, 1) ${delay}ms, opacity 240ms ease-out ${delay}ms`;
+            el.style.transform = 'translate(0px, 0px)';
+            el.style.opacity = '1';
+          });
+          // Cleanup helper
+          setTimeout(() => {
+            items.forEach(el => {
+              el.style.transition = '';
+              el.style.transform = '';
+              el.style.opacity = '';
+              delete el.__delay;
+            });
+          }, 600);
+        });
+      }
+
+      buttons.forEach(btn => {
+        btn.addEventListener('click', () => {
+          buttons.forEach(b => b.classList.remove('active'));
+          btn.classList.add('active');
+          render(btn.dataset.filter || 'all');
+        });
+      });
+
+      render('all');
+    })();
 
     // Shopping music: random track rotation with mute
     (function setupStoreMusic() {
@@ -730,7 +953,7 @@ function openWindow(title) {
         'slideshow.mp3'
       ];
       const audio = new Audio();
-      audio.volume = 0.5;
+      audio.volume = 0.3;
       audio.preload = 'auto';
 
       // maintain current index in this session
@@ -779,9 +1002,9 @@ function openWindow(title) {
       }, 50);
       audio.addEventListener('ended', playNext);
 
-      // Create window-level audio controls (mute toggle + volume)
-      const controlsWrap = document.createElement('div');
-      controlsWrap.className = 'store-audio-wrap';
+      // Bind audio controls into bottom bar
+      const controlsWrap = content.querySelector('.store-audio-wrap');
+      if (!controlsWrap) return;
 
       const toggleBtn = document.createElement('button');
       toggleBtn.className = 'store-audio-btn';
@@ -818,7 +1041,6 @@ function openWindow(title) {
 
       controlsWrap.appendChild(toggleBtn);
       controlsWrap.appendChild(vol);
-      win.appendChild(controlsWrap);
 
       toggleBtn.addEventListener('click', () => {
         audio.muted = !audio.muted;
