@@ -429,39 +429,11 @@ function openWindow(title) {
         } else {
           downloadBtn.removeAttribute('disabled');
         }
-        // Prefer a friendly filename based on the track label instead of remote URL hash
-        // If WAV available, use .wav; otherwise use .mp3
-        let desiredBase = (fileNode && fileNode.name) ? fileNode.name : 'track';
-        if (wavUrl) {
-          desiredBase = desiredBase.replace(/\.[^.]+$/,'') + '.wav';
-        } else if (mp3Url) {
-          desiredBase = desiredBase.replace(/\.[^.]+$/,'') + '.mp3';
-        }
-        downloadBtn.setAttribute('download', desiredBase);
-
-        // Safer cross-origin download with desired filename: fetch to Blob, then trigger a local download.
-        // If CORS blocks fetch, fall back to default behavior.
-        downloadBtn.onclick = async (ev) => {
-          if (!dlUrl || dlUrl === '#') return; // disabled state guards click
-          try {
-            ev.preventDefault();
-            const res = await fetch(dlUrl, { credentials: 'omit', mode: 'cors' });
-            if (!res.ok) throw new Error('Network');
-            const blob = await res.blob();
-            const objectUrl = URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.href = objectUrl;
-            a.download = desiredBase;
-            document.body.appendChild(a);
-            a.click();
-            a.remove();
-            setTimeout(() => URL.revokeObjectURL(objectUrl), 1000);
-          } catch (e) {
-            // Fallback: let the browser handle the cross-origin download (filename may be hashed)
-            downloadBtn.onclick = null; // avoid loop
-            downloadBtn.click();
-          }
-        };
+        try {
+          const a = new URL(dlUrl, window.location.href);
+          const base = (a.pathname.split('/').pop() || 'track');
+          downloadBtn.setAttribute('download', base);
+        } catch { /* noop */ }
       }
 
       rbAudio.currentTime = 0;
@@ -718,8 +690,10 @@ function openWindow(title) {
     (function setupStoreMusic() {
       const tracks = [
         'goldentime.mp3',
-        'shopping_theme_2.mp3',
-        'shopping_theme_3.mp3'
+        'meadowtronic.mp3',
+        'checkmiiout.mp3',
+        'puzzle.mp3',
+        'slideshow.mp3'
       ];
       const audio = new Audio();
       audio.volume = 0.5;
@@ -782,6 +756,8 @@ function openWindow(title) {
       });
       obs.observe(document.body, { childList: true, subtree: true });
     })();
+
+  
   } else if (title === "demodisc_01") {
     // Demodisc window: simple cover + audio player
     if (isMobile) {
@@ -882,6 +858,45 @@ function openWindow(title) {
           text-shadow: 0 1px 0 rgba(0, 0, 0, 0.1);
           border-radius: 4px;
         }        
+
+        /* Box for platform icons styled like the track info box */
+        .platform-box {
+          background: white;
+          color: #000;
+          border: 1px solid rgba(0, 0, 0, 0.2);
+          box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
+          font-family: "Segoe UI", sans-serif;
+          font-size: 14px;
+          padding: 12px 16px;
+          margin-top: 40px; /* push it lower */
+          max-width: 300px;
+          width: 100%;
+          text-align: center;
+          border-radius: 4px;
+        }
+
+        .platform-box .platform-icons {
+          margin-top: 4px;
+        }
+
+        /* Platform icons layout (panel look is provided by .platform-box) */
+        .platform-icons {
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          gap: 12px;
+          width: 100%;
+          max-width: 100%;
+          margin-left: auto;
+          margin-right: auto;
+        }
+        .platform-icons .platform-icon {
+          width: 28px;
+          height: 28px;
+          object-fit: contain;
+          filter: drop-shadow(0 1px 2px rgba(0,0,0,0.25));
+        }
+        .platform-icons a { display: inline-flex; }
     
         .lcd-display,
         .lcd-track-info {
@@ -1178,17 +1193,19 @@ function openWindow(title) {
             <div class="track-description" id="goodtrip-info-display" style="display:none">
               <strong>GOODTRIP</strong>
             </div>
-        
-            <div class="platform-icons">
-              <a href="https://open.spotify.com/album/2AOE6VeeBrTjAco9KYWeDC?si=2fe7b5b2a6c64891" target="_blank">
-                <img src="spotify-icon.webp" alt="Spotify" class="platform-icon" />
-              </a>
-              <a href="https://music.apple.com/gb/album/goodtrip/1785658586" target="_blank">
-                <img src="applemusic-logo.png" alt="Apple Music" class="platform-icon" />
-              </a>
-              <a href="https://bandcamp.com" target="_blank">
-                <img src="bandcamp-icon.png" alt="Bandcamp" class="platform-icon" />
-              </a>
+
+            <div class="platform-box">
+              <div class="platform-icons">
+                <a href="https://open.spotify.com/album/2AOE6VeeBrTjAco9KYWeDC?si=2fe7b5b2a6c64891" target="_blank">
+                  <img src="spotify-icon.webp" alt="Spotify" class="platform-icon" />
+                </a>
+                <a href="https://music.apple.com/gb/album/goodtrip/1785658586" target="_blank">
+                  <img src="applemusic-logo.png" alt="Apple Music" class="platform-icon" />
+                </a>
+                <a href="https://bandcamp.com" target="_blank">
+                  <img src="bandcamp-icon.png" alt="Bandcamp" class="platform-icon" />
+                </a>
+              </div>
             </div>
 
           </div>
@@ -2126,9 +2143,9 @@ function renderAlbumWindow(config) {
   // Build the HTML for the window content
   let platformIcons = '';
   if (config.platformLinks && config.platformLinks.length) {
-    platformIcons = `<div class="platform-icons">` +
+    platformIcons = `<div class="platform-box"><div class="platform-icons">` +
       config.platformLinks.map(link => `<a href="${link.href}" target="_blank"><img src="${link.icon}" alt="${link.alt}" class="platform-icon" /></a>`).join('') +
-      `</div>`;
+      `</div></div>`;
   }
 
   let logoHtml = '';
@@ -2178,8 +2195,8 @@ function renderAlbumWindow(config) {
       }
       .goodtrip-left[data-title="${config.title}"] { 
         width: 320px !important; 
-        min-width: 250px !important; 
-        max-width: 70% !important; 
+        min-width: 300px !important; 
+        max-width: 320px !important; 
         height: 100% !important; 
         ${config.leftBackground.startsWith('#') ? `background: ${config.leftBackground} !important;` : `background: url('${config.leftBackground}') no-repeat center center !important; background-size: cover !important;`} 
         display: flex; 
@@ -2192,7 +2209,17 @@ function renderAlbumWindow(config) {
       }
       .left-inner { display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100%; width: 100%; }
 
-      .goodtrip-right { padding: 0; position: relative; overflow-y: auto; overflow-x: hidden; display: flex; flex-direction: column; align-items: center; color: white; text-shadow: 0 0 4px #000; scrollbar-gutter: stable; }
+      .goodtrip-right { padding: 0; position: relative; overflow-y: auto; overflow-x: hidden; display: flex; flex-direction: column; align-items: center; color: white; text-shadow: 0 0 4px #000; scrollbar-gutter: stable; flex: 1 1 auto; }
+      /* Vertical resizer between left and right panes */
+      .goodtrip-resizer {
+        flex: 0 0 6px;
+        cursor: col-resize;
+        background: rgba(0,0,0,0.08);
+        border-left: 1px solid rgba(0,0,0,0.12);
+        border-right: 1px solid rgba(255,255,255,0.2);
+        align-self: stretch;
+        z-index: 5;
+      }
       .track-description#goodtrip-info-display { background: white; color: #000; border: 1px solid rgba(0, 0, 0, 0.2); box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2); font-family: "Segoe UI", sans-serif; font-size: 14px; padding: 12px 16px; margin-top: 20px; max-width: 300px; text-align: left; text-shadow: 0 1px 0 rgba(0, 0, 0, 0.1); border-radius: 4px; }
       .lcd-display, .lcd-track-info { width: 100%; height: 36px; background: #111; color: #0f0; font-family: 'Courier New', monospace; font-size: 1.2em; padding: 6px 12px; border: 2px inset #0f0; overflow: hidden; position: relative; margin-bottom: 20px; display: flex; align-items: center; justify-content: center; text-shadow: 0 0 6px #0f0; flex-shrink: 0; }
       #scrolling-container { position: absolute; left: 0; top: 0; width: 100%; height: 100%; overflow: hidden; display: flex; align-items: center; pointer-events: none; will-change: transform; }
@@ -2201,7 +2228,7 @@ function renderAlbumWindow(config) {
       @keyframes scroll-left { 0% { transform: translateX(0); } 100% { transform: translateX(-50%); } }
       .cassette-wrapper { width: 100%; display: flex; justify-content: center; position: relative; }
       .cassette-image { width: 100%; max-width: 320px; min-width: 280px; height: auto; display: block; filter: drop-shadow(0 7px 10px rgba(0, 0, 0, 0.7)); }
-      .album-cover { margin-top: 0; width: 100%; max-width: 300px; margin-bottom: 20px; box-shadow: 0 0 15px rgba(0,0,0,0.8); border-radius: 0; display: block; image-rendering: auto !important; cursor: zoom-in; transition: box-shadow 0.2s ease; }
+      .album-cover { margin-top: 8px; width: 100%; max-width: 320px; margin-bottom: 20px; box-shadow: 0 0 15px rgba(0,0,0,0.8); border-radius: 0; display: block; image-rendering: auto !important; cursor: zoom-in; transition: box-shadow 0.2s ease; }
       .album-cover:hover { box-shadow: 0 0 25px rgba(0, 0, 0, 1.2); }
       .lcd-volume { width: 95px; height: 38px; background: #111; border: 2px inset #0f0; display: flex; align-items: flex-end; justify-content: center; gap: 6px; margin-top: 15px; padding: 4px 0; text-shadow: 0 0 6px #0f0; flex-shrink: 0; }
       .lcd-volume .bar { width: 6px; background: #030; cursor: pointer; transition: background 0.2s, box-shadow 0.2s; }
@@ -2221,6 +2248,42 @@ function renderAlbumWindow(config) {
       .goodtrip-logo-shadow { left: 0px; position: absolute; top: 0; left: 0; height: 180px; width: 120%; background: linear-gradient(to bottom, rgba(0, 0, 0, 1.1), transparent); z-index: 10; }
       .goodtrip-content-inner { padding: 20px 20px 20px 20px; width: 100%; display: flex; flex-direction: column; align-items: center; }
       #goodtrip-info-display.default-info { color: #666; font-weight: normal; font-style: italic; }
+      /* Box for platform icons styled like the track info box */
+      .platform-box {
+        background: rgba(255, 255, 255, 0.85);
+        color: #000;
+        border: 1px solid rgba(0, 0, 0, 0.15);
+        box-shadow: 0 3px 8px rgba(0, 0, 0, 0.18);
+        font-family: "Segoe UI", sans-serif;
+        font-size: 14px;
+        padding: 8px 14px;
+        margin-top: 32px;
+        max-width: 380px;
+        border-radius: 6px;
+        display: flex;
+        align-items: center; /* vertical centering */
+        justify-content: center; /* horizontal centering */
+        min-height: 50px;
+      }
+      .platform-box .platform-icons { margin-top: 0; }
+      /* Platform icons layout */
+      .platform-icons {
+        display: flex;
+        align-items: center; /* vertical center icons within the row */
+        justify-content: center;
+        gap: 16px;
+        flex-wrap: wrap;
+        max-width: 360px;
+        margin-left: auto;
+        margin-right: auto;
+      }
+      .platform-icons .platform-icon {
+        width: 40px;
+        height: 40px;
+        object-fit: contain;
+        filter: drop-shadow(0 1px 2px rgba(0,0,0,0.25));
+      }
+      .platform-icons a { display: inline-flex; }
     </style>
     <div class="goodtrip-layout" data-title="${config.title}">
       <div class="goodtrip-left" data-title="${config.title}">
@@ -2228,6 +2291,8 @@ function renderAlbumWindow(config) {
           ${leftInnerHtml}
         </div>
       </div>
+
+      <div class="goodtrip-resizer" role="separator" aria-orientation="vertical" tabindex="0" aria-label="Resize left panel"></div>
 
       <div class="goodtrip-right">
         ${logoHtml}
@@ -2263,6 +2328,9 @@ function renderAlbumWindow(config) {
           overflow-x: hidden;
           padding-bottom: 20px;
         }
+
+        /* Hide resizer on mobile layout */
+        .window[data-title="${config.title}"] .goodtrip-resizer { display: none !important; }
 
         .window[data-title="${config.title}"] .goodtrip-right {
           width: 100% !important;
@@ -2309,6 +2377,97 @@ function renderAlbumWindow(config) {
 
     applyStacking();
     window.addEventListener('resize', applyStacking);
+  })();
+
+  // Enable dragging the vertical resizer to adjust left pane width within min/max
+  (function setupGoodtripResizer() {
+    const layout = content.querySelector('.goodtrip-layout');
+    const left = content.querySelector('.goodtrip-left');
+    const resizer = content.querySelector('.goodtrip-resizer');
+    if (!layout || !left || !resizer) return;
+
+    let startX = 0;
+    let startWidth = 0;
+    let dragging = false;
+
+    function getBounds() {
+      const cs = getComputedStyle(left);
+      const minW = parseFloat(cs.minWidth) || 0;
+      const layoutRect = layout.getBoundingClientRect();
+      const maxProp = cs.maxWidth;
+      let maxW;
+      if (maxProp && maxProp.endsWith('%')) {
+        maxW = (parseFloat(maxProp) / 100) * layoutRect.width;
+      } else if (maxProp && maxProp !== 'none' && !isNaN(parseFloat(maxProp))) {
+        maxW = parseFloat(maxProp);
+      } else {
+        // Fallback to the rule we set (70% of layout) if computed max-width is 'none'
+        maxW = 0.7 * layoutRect.width;
+      }
+      // Ensure the right pane keeps at least some space
+      const minRight = 280; // px
+      maxW = Math.min(maxW, layoutRect.width - minRight);
+      if (!isFinite(maxW) || maxW <= 0) maxW = layoutRect.width - minRight;
+      return { minW, maxW };
+    }
+
+    // Clamp current width into bounds on init so it respects new limits immediately
+    (function clampInitialWidth() {
+      const { minW, maxW } = getBounds();
+      const cur = left.getBoundingClientRect().width;
+      let next = Math.max(minW, Math.min(maxW, cur));
+      left.style.setProperty('width', `${Math.round(next)}px`, 'important');
+    })();
+
+    function onMouseMove(e) {
+      if (!dragging) return;
+      const dx = e.clientX - startX;
+      const { minW, maxW } = getBounds();
+      let newW = startWidth + dx;
+      if (newW < minW) newW = minW;
+      if (newW > maxW) newW = maxW;
+      left.style.setProperty('width', `${Math.round(newW)}px`, 'important');
+    }
+
+    function endDrag() {
+      if (!dragging) return;
+      dragging = false;
+      document.body.style.cursor = '';
+      document.removeEventListener('mousemove', onMouseMove);
+      document.removeEventListener('mouseup', endDrag);
+    }
+
+    resizer.addEventListener('mousedown', (e) => {
+      if (window.matchMedia('(max-width: 768px)').matches) return;
+      dragging = true;
+      startX = e.clientX;
+      startWidth = left.getBoundingClientRect().width;
+      document.body.style.cursor = 'col-resize';
+      document.addEventListener('mousemove', onMouseMove);
+      document.addEventListener('mouseup', endDrag);
+      e.preventDefault();
+    });
+
+    resizer.addEventListener('keydown', (e) => {
+      if (window.matchMedia('(max-width: 768px)').matches) return;
+      const step = (e.shiftKey ? 20 : 10);
+      if (e.key === 'ArrowLeft' || e.key === 'ArrowRight') {
+        const { minW, maxW } = getBounds();
+        const cur = left.getBoundingClientRect().width;
+        let next = cur + (e.key === 'ArrowRight' ? step : -step);
+        if (next < minW) next = minW;
+        if (next > maxW) next = maxW;
+        left.style.setProperty('width', `${Math.round(next)}px`, 'important');
+        e.preventDefault();
+      }
+    });
+
+    window.addEventListener('resize', () => {
+      const { minW, maxW } = getBounds();
+      const cur = left.getBoundingClientRect().width;
+      if (cur < minW) left.style.setProperty('width', `${Math.round(minW)}px`, 'important');
+      if (cur > maxW) left.style.setProperty('width', `${Math.round(maxW)}px`, 'important');
+    });
   })();
 
   ['goodtrip-rewind', 'goodtrip-play', 'goodtrip-pause', 'goodtrip-forward'].forEach(id => {
