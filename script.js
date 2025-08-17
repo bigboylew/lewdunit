@@ -5,11 +5,78 @@ const sounds = {
   'sound-close': new Audio('https://files.catbox.moe/nmgith.mp3'),
   'sound-logon': new Audio('https://files.catbox.moe/7tkpiy.mp3'),
   'sound-error': new Audio('https://files.catbox.moe/2elxeq.mp3'),
+  'sound-dooropen': new Audio('dooropen.mp3'),
+  'sound-storeopen': new Audio('storeopen.mp3'),
 };
 
 // Preload all sounds
 for (const soundKey in sounds) {
   sounds[soundKey].load();
+}
+
+// One-time unlock to satisfy autoplay policies: silently play/pause each sound on first user interaction
+function installAudioUnlockOnce() {
+  const handler = () => {
+    Object.values(sounds).forEach((a) => {
+      try {
+        const oldVol = a.volume;
+        a.muted = false;
+        a.volume = 0;
+        a.currentTime = 0;
+        const p = a.play();
+        if (p && typeof p.then === 'function') {
+          p.then(() => {
+            try { a.pause(); a.currentTime = 0; a.volume = oldVol; } catch {}
+          }).catch(() => {});
+        }
+      } catch {}
+    });
+    window.removeEventListener('pointerdown', handler, true);
+    window.removeEventListener('keydown', handler, true);
+  };
+  window.addEventListener('pointerdown', handler, true);
+  window.addEventListener('keydown', handler, true);
+}
+installAudioUnlockOnce();
+
+// Fade out all <audio> elements inside a container before pausing them
+function fadeOutAudiosIn(container, duration = 800) {
+  try {
+    const audios = container.querySelectorAll('audio');
+    const promises = [];
+    audios.forEach((el) => {
+      const startVol = el.muted ? 0 : (isNaN(el.volume) ? 1 : el.volume);
+      if (startVol <= 0) {
+        try { el.pause(); } catch {}
+        return;
+      }
+      const steps = 20;
+      const stepDur = Math.max(16, duration / steps);
+      let step = 0;
+      const wasMuted = el.muted;
+      el.muted = false;
+      promises.push(new Promise((resolve) => {
+        function tick() {
+          step += 1;
+          const v = Math.max(0, startVol * (1 - step / steps));
+          el.volume = v;
+          if (step < steps) {
+            setTimeout(tick, stepDur);
+          } else {
+            try { el.pause(); } catch {}
+            // restore prior settings for when/if element persists
+            el.volume = startVol;
+            el.muted = wasMuted;
+            resolve();
+          }
+        }
+        tick();
+      }));
+    });
+    return Promise.all(promises);
+  } catch {
+    return Promise.resolve();
+  }
 }
 
 
@@ -24,11 +91,41 @@ function playSound(name) {
   const sound = sounds[name];
   if (!sound) return;
 
-  // To allow rapid replay, clone and play new Audio instance
-  const clone = sound.cloneNode();
-  clone.play().catch(() => {
-    // Ignoring play errors (e.g. due to user not interacting yet)
-  });
+  const src = sound.currentSrc || sound.src;
+  // Try a fresh instance first – avoids shared state and allows rapid retriggers
+  if (src) {
+    const inst = new Audio(src);
+    try { inst.muted = false; } catch {}
+    try { inst.volume = 1; } catch {}
+    try { inst.currentTime = 0; } catch {}
+    const p1 = inst.play();
+    if (p1 && typeof p1.catch === 'function') {
+      p1.catch(() => {
+        // Fallback: try the original object
+        try { sound.currentTime = 0; } catch {}
+        try { sound.muted = false; } catch {}
+        try { sound.volume = 1; } catch {}
+        const p2 = sound.play();
+        if (p2 && typeof p2.catch === 'function') {
+          p2.catch(() => {
+            // Final fallback: clone
+            const clone = sound.cloneNode();
+            try { clone.currentTime = 0; } catch {}
+            try { clone.muted = false; } catch {}
+            try { clone.volume = 1; } catch {}
+            clone.play().catch(() => {});
+          });
+        }
+      });
+    }
+    return;
+  }
+  // No src available; attempt original anyway
+  try { sound.currentTime = 0; } catch {}
+  try { sound.muted = false; } catch {}
+  try { sound.volume = 1; } catch {}
+  const p = sound.play();
+  if (p && typeof p.catch === 'function') { p.catch(() => {}); }
 }
 
 
@@ -925,7 +1022,7 @@ function openWindow(title) {
             </div>
             <div class="detail-desc" style="grid-column: 2 / 3; background:#fff;border:1px solid #ddd;border-radius:8px;padding:14px; color:#333; line-height:1.5; font-size:14px;">
               <div style="font-weight:700; margin-bottom:6px;">Description</div>
-              <div>Limited notes and blurb about the Whodunit? vinyl. Replace this with real product details: pressing info, tracklist highlights, shipping notes, etc.</div>
+              <div>'Whodunit?' on black vinyl. Includes 2 bonus tracks. Mixes and tracklist differ from digital/final version.</div>
             </div>
           </div>
         `;
@@ -1367,22 +1464,54 @@ function openWindow(title) {
         updateIcon();
       });
 
+      // Fade out helper used on close/removal
+      function fadeOutAndCleanup(duration = 800) {
+        const startVol = audio.muted ? 0 : audio.volume;
+        // If already silent, just stop immediately
+        if (startVol <= 0) {
+          audio.pause();
+          audio.src = '';
+          if (controlsWrap && controlsWrap.parentNode) controlsWrap.remove();
+          return;
+        }
+        const steps = 20;
+        const stepDur = Math.max(16, duration / steps);
+        let step = 0;
+        const wasMuted = audio.muted;
+        audio.muted = false; // ensure fade is audible
+        function tick() {
+          step += 1;
+          const v = Math.max(0, startVol * (1 - step / steps));
+          audio.volume = v;
+          // reflect on slider if present
+          const volEl = controlsWrap && controlsWrap.querySelector('.store-volume');
+          if (volEl) volEl.value = String(v);
+          if (step < steps) {
+            setTimeout(tick, stepDur);
+          } else {
+            audio.pause();
+            audio.src = '';
+            // restore prior mute state and volume for next open session
+            audio.volume = startVol;
+            audio.muted = wasMuted;
+            if (controlsWrap && controlsWrap.parentNode) controlsWrap.remove();
+          }
+        }
+        tick();
+      }
+
       // Pause music when this Store window is closed
       const closeBtn = win.querySelector('.window-header button');
       if (closeBtn) {
         closeBtn.addEventListener('click', () => {
-          audio.pause();
-          audio.src = '';
-          if (controlsWrap && controlsWrap.parentNode) controlsWrap.remove();
+          fadeOutAndCleanup(800);
         }, { once: true });
       }
 
       // Also observe removal of the window node as a fallback
       const obs = new MutationObserver(() => {
         if (!document.body.contains(win)) {
-          audio.pause();
-          audio.src = '';
-          if (controlsWrap && controlsWrap.parentNode) controlsWrap.remove();
+          fadeOutAndCleanup(600);
           obs.disconnect();
         }
       });
@@ -2166,7 +2295,7 @@ function openWindow(title) {
           font-size: clamp(10px, 3.6vw, 28px);
           letter-spacing: 0.5px;
           color: rgba(255,255,255,0.9);
-          text-shadow: 0 0 12px rgba(63, 63, 63, 0.32), 0 5px 0 rgba(0,0,0,0.8);
+          text-shadow: 0 0 10px rgba(63, 63, 63, 0.32), 0 4px 0 rgba(0,0,0,0.8);
           opacity: 0;
           transition: opacity 160ms ease;
           pointer-events: none; /* allow clicks to pass */
@@ -2285,6 +2414,8 @@ function openWindow(title) {
     function triggerOpenAndRedirect() {
       if (opened) return;
       opened = true;
+      // Play door open sound (inline, simple)
+      try { const s = new Audio('dooropen.mp3'); s.play().catch(()=>{}); } catch {}
       stageEl.classList.add('open');
       // After the right panel finishes its (shorter) transition, open link in new tab
       const handler = (e) => {
@@ -2439,13 +2570,18 @@ function openWindow(title) {
   
     playSound('sound-close');
   
+    // Begin fading out any audio elements in this window
+    const fadePromise = fadeOutAudiosIn(win, 800);
+
     win.style.transition = 'opacity 0.2s ease, transform 0.2s ease';
     win.style.opacity = '0';
     win.style.transform = 'scale(0.95)';
   
     win.addEventListener('transitionend', () => {
-      win.remove();
-      removeTaskbarIcon(title);
+      Promise.resolve(fadePromise).finally(() => {
+        win.remove();
+        removeTaskbarIcon(title);
+      });
     }, { once: true });
   });
 
@@ -2457,6 +2593,8 @@ function openWindow(title) {
   animateWindowSpawn(win);
   setTimeout(() => { bringToFront(win); }, 0);
   addTaskbarIcon(title);
+  // Play store open sound after DOM insertion (simple inline)
+  if (title === 'Store') { try { const s = new Audio('storeopen.mp3'); s.play().catch(()=>{}); } catch {} }
 
   // Logo fade on scroll for any album with logo and shadow
   const rightPanel = content.querySelector('.goodtrip-right');
