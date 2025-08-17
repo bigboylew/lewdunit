@@ -1027,3 +1027,30 @@ body.loading * {
   display: none;
 }
 
+/* =======================
+   Windows 7 hand cursor only
+   ======================= */
+/* Replace the default hand wherever pointer is used (without altering other roles) */
+[style*="cursor: pointer"], [style*="cursor:pointer"],
+a, button, input[type="button"], input[type="submit"], label[for],
+[role="button"], [onclick],
+.taskbar-icon, .platform-icon, .download-btn, .close-btn, #start-button,
+/* Full-area clickable containers for consistent hand across cards */
+.login-box, .login-box *,
+.product-item, .product-item *,
+.store-filter-btn, .store-filter-btn *,
+.release-item, .release-item *,
+/* Whodunit door clickable area */
+.whodunit-door, .whodunit-door * {
+  cursor: url('Cursors/windows7_link.cur'), pointer !important;
+}
+
+/* Explicit exceptions so native cursors win where appropriate */
+.goodtrip-separator, .goodtrip-separator * { cursor: ew-resize !important; }
+.demodisc-separator, .demodisc-separator * { cursor: ns-resize !important; }
+.window-header { cursor: move !important; }
+
+/* Preserve album modal zoom cursors */
+.album-cover { cursor: zoom-in !important; }
+.modal-backdrop { cursor: zoom-out !important; }
+

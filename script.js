@@ -2103,17 +2103,201 @@ function openWindow(title) {
     }
     content.innerHTML = `
       <style>
-        .whodunit-wrap { height: 100%; display: flex; align-items: center; justify-content: center; flex-direction: column; gap: 12px; }
-        .whodunit-wrap h2 { margin: 0; color: #222; text-shadow: 0 1px 0 rgba(255,255,255,0.6); }
-        .whodunit-art { max-width: 380px; width: 90%; height: auto; box-shadow: 0 6px 18px rgba(0,0,0,0.4); border-radius: 6px; image-rendering: auto !important; }
-        .whodunit-note { color: #333; font-size: 14px; text-align: center; }
+        .whodunit-stage {
+          position: relative;
+          width: 100%;
+          height: 100%;
+          background: #000; /* fill with black */
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          overflow: hidden;
+          perspective: 1200px; /* for 3D door swing */
+          /* subtle CRT scanline feel */
+          background-image: repeating-linear-gradient(
+            to bottom,
+            rgba(255,255,255,0.02) 0px,
+            rgba(255,255,255,0.02) 1px,
+            transparent 1px,
+            transparent 3px
+          );
+        }
+
+        /* White void behind the door */
+        .whodunit-void {
+          position: absolute;
+          width: min(50%, 420px);
+          height: min(60%, 360px);
+          background: #fff;
+          box-shadow:
+            0 0 28px 8px rgba(255,255,255,0.5),
+            0 0 72px 16px rgba(255,255,255,0.25),
+            inset 0 0 60px rgba(255,255,255,0.9);
+          transition: box-shadow 300ms ease;
+        }
+        /* Stronger glow when door opens */
+        .whodunit-stage.open .whodunit-void {
+          box-shadow:
+            0 0 70px 20px rgba(255,255,255,0.95),
+            0 0 200px 40px rgba(255,255,255,0.55),
+            inset 0 0 120px rgba(255,255,255,1);
+        }
+
+        /* Door assembly */
+        .whodunit-door {
+          position: relative;
+          width: min(50%, 420px);
+          height: min(60%, 360px);
+          display: flex;
+          transform-style: preserve-3d;
+          cursor: pointer; /* door only is clickable */
+          z-index: 4; /* below hint/overlay */
+        }
+
+        /* Hover hint */
+        .whodunit-hint {
+          position: absolute;
+          inset: 0;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          font-family: inherit;
+          font-weight: 800;
+          font-size: clamp(10px, 3.6vw, 28px);
+          letter-spacing: 0.5px;
+          color: rgba(255,255,255,0.9);
+          text-shadow: 0 0 12px rgba(63, 63, 63, 0.32), 0 5px 0 rgba(0,0,0,0.8);
+          opacity: 0;
+          transition: opacity 160ms ease;
+          pointer-events: none; /* allow clicks to pass */
+          /* Sharper pixel-like look */
+          -webkit-font-smoothing: none;
+          -moz-osx-font-smoothing: auto;
+          font-smooth: never;
+          text-rendering: optimizeSpeed;
+          image-rendering: pixelated;
+          z-index: 6; /* above overlay and door */
+        }
+        .whodunit-door:hover + .whodunit-hint,
+        .whodunit-door:hover .whodunit-hint,
+        .whodunit-door:hover ~ .whodunit-hint { opacity: 1; }
+        .whodunit-stage.open .whodunit-hint { opacity: 0; }
+
+        .door-half {
+          flex: 1 1 50%;
+          /* retro pixelated plank look */
+          /* remove visible stripes; keep subtle pixel texture */
+          background:
+            url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='2' height='2' viewBox='0 0 2 2'><rect width='1' height='1' fill='rgba(255,255,255,0.04)'/><rect x='1' y='1' width='1' height='1' fill='rgba(0,0,0,0.06)'/></svg>") repeat,
+            linear-gradient(#3a2516, #3a2516);
+          background-size: 2px 2px, auto;
+          border: 2px solid #5a4433;
+          /* stacked hard-edged shadows for a pixel-y outline */
+          box-shadow:
+            0 0 0 2px rgba(255,255,255,0.05) inset,
+            0 0 0 4px rgba(0,0,0,0.2) inset,
+            0 8px 0 rgba(0,0,0,0.4);
+          transform-origin: center left;
+          transition: transform 600ms cubic-bezier(0.2, 0.8, 0.2, 1);
+          position: relative;
+          image-rendering: pixelated;
+          border-radius: 0; /* no rounding for retro look */
+        }
+        .door-half.right { transform-origin: center right; }
+
+        /* Simple paneling effect */
+        .door-half::before,
+        .door-half::after {
+          content: "";
+          position: absolute;
+          left: 10%; right: 10%;
+          border: 1px solid rgba(0,0,0,0.35);
+          background: rgba(255,255,255,0.04);
+        }
+        .door-half::before { top: 14%; height: 28%; }
+        .door-half::after  { bottom: 14%; height: 28%; }
+
+        /* Handles */
+        .handle {
+          position: absolute;
+          top: 50%;
+          width: 12px; height: 12px;
+          background: radial-gradient(circle at 30% 30%, #f8e7a8, #c9a64f 60%, #8a6b2a);
+          border-radius: 50%;
+          box-shadow: 0 0 6px rgba(0,0,0,0.6);
+          transform: translateY(-50%);
+          image-rendering: pixelated;
+        }
+        .left .handle { right: 8%; }
+        .right .handle { left: 8%; }
+
+        /* Open state */
+        .whodunit-stage.open .door-half.left  { transform: rotateY(-100deg); }
+        .whodunit-stage.open .door-half.right { transform: rotateY(100deg); }
+
+        /* Retro overlay above content for CRT/pixel vibe */
+        .retro-overlay {
+          position: absolute;
+          inset: 0;
+          z-index: 5; /* above door, below hint */
+          pointer-events: none;
+          /* multiple layered effects: scanlines + vignette + dither */
+          background-image:
+            /* scanlines */
+            repeating-linear-gradient(
+              to bottom,
+              rgba(255,255,255,0.06) 0px,
+              rgba(255,255,255,0.06) 1px,
+              rgba(0,0,0,0.0) 1px,
+              rgba(0,0,0,0.0) 3px
+            ),
+            /* subtle vignette */
+            radial-gradient(ellipse at center, rgba(0,0,0,0) 60%, rgba(0,0,0,0.35) 100%),
+            /* tiny checker dither */
+            url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='2' height='2' viewBox='0 0 2 2'><rect width='1' height='1' fill='rgba(255,255,255,0.05)'/><rect x='1' y='1' width='1' height='1' fill='rgba(255,255,255,0.05)'/></svg>");
+          background-size: auto, auto, 2px 2px;
+          mix-blend-mode: overlay;
+          opacity: 0.35;
+        }
       </style>
-      <div class="whodunit-wrap">
-        <h2>Whodunit?</h2>
-        <img class="whodunit-art" src="whodunitvinyl1.webp" alt="Whodunit?" />
-        <div class="whodunit-note">More coming soon.</div>
+
+      <div id="whodunit-stage" class="whodunit-stage" aria-label="Open the door">
+        <div class="whodunit-void" aria-hidden="true"></div>
+        <div class="retro-overlay" aria-hidden="true"></div>
+        <div class="whodunit-door">
+          <div class="door-half left"><span class="handle"></span></div>
+          <div class="door-half right"><span class="handle"></span></div>
+          <div class="whodunit-hint">Open?</div>
+        </div>
       </div>
     `;
+
+    // Remove padding/scroll to ensure full-bleed
+    content.style.padding = '0';
+    content.style.overflow = 'hidden';
+
+    // Click to open, then redirect after animation completes
+    const preSaveUrl = 'https://share.amuse.io/VbMvlRPQelae'; 
+    const stageEl = content.querySelector('#whodunit-stage');
+    const doorEl = content.querySelector('.whodunit-door');
+    const rightHalf = content.querySelector('.door-half.right');
+    let opened = false;
+    function triggerOpenAndRedirect() {
+      if (opened) return;
+      opened = true;
+      stageEl.classList.add('open');
+      // After the right panel finishes its (shorter) transition, open link in new tab
+      const handler = (e) => {
+        if (e.propertyName === 'transform') {
+          rightHalf.removeEventListener('transitionend', handler);
+          // open a bit sooner and in a new tab
+          window.open(preSaveUrl, '_blank', 'noopener');
+        }
+      };
+      rightHalf.addEventListener('transitionend', handler);
+    }
+    // Only clicks on the door open it
+    doorEl.addEventListener('click', triggerOpenAndRedirect, { once: true });
   } else {
     content.innerHTML = `<p>This is the ${title} window.</p>`;
   }
