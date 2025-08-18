@@ -258,6 +258,10 @@ function openWindow(title) {
             <img src="isocover.webp" alt="iso" class="music-icon" />
             <div class="music-title">iso</div>
           </div>
+          <div class="music-section" onclick="openMusicSection('ipod')">
+            <img src="cdicon.gif" alt="iPod Player" class="music-icon" />
+            <div class="music-title">iPod Player</div>
+          </div>
         </div>
 
         <div class="music-section-content" id="music-section-content" style="display:none;">
@@ -332,12 +336,215 @@ function openWindow(title) {
               <div>iso</div>
             </div>
           </div>`;
+      } else if (key === 'ipod') {
+        titleEl.textContent = 'iPod Player';
+        bodyEl.innerHTML = `
+          <div class="ipod-wrap">
+            <div class="ipod">
+              <div class="ipod-screen">
+                <div class="ipod-status"><span>Now Playing</span><span id="ipod-status-ind">▶</span></div>
+                <div class="ipod-main">
+                  <div class="ipod-art"><img id="ipod-art" src="demodisccover-hq.png" alt="art"/></div>
+                  <div class="ipod-meta">
+                    <div id="ipod-title" class="ipod-title">—</div>
+                    <div id="ipod-artist" class="ipod-artist">—</div>
+                  </div>
+                </div>
+                <div class="ipod-progress">
+                  <div id="ipod-time-cur" class="ipod-time">0:00</div>
+                  <div class="ipod-bar" id="ipod-seek"><div class="ipod-bar-fill" id="ipod-bar-fill"></div></div>
+                  <div id="ipod-time-dur" class="ipod-time">0:00</div>
+                </div>
+                <div class="ipod-list" id="ipod-list"></div>
+              </div>
+              <div class="ipod-wheel">
+                <div class="wheel" id="ipod-wheel">
+                  <div class="wheel-btn btn-menu" id="ipod-btn-menu">MENU</div>
+                  <div class="wheel-btn btn-prev" id="ipod-btn-prev">⏮</div>
+                  <div class="wheel-btn btn-next" id="ipod-btn-next">⏭</div>
+                  <div class="wheel-btn btn-play" id="ipod-btn-play">⏯</div>
+                  <div class="wheel-center" id="ipod-btn-center">SELECT</div>
+                </div>
+              </div>
+              <audio id="ipod-audio" preload="metadata"></audio>
+            </div>
+          </div>`;
+        setupIpodPlayer(section);
       }
     }
 
     // Expose handlers for inline onclick inside this window scope
     window.openMusicSection = openMusicSection;
     window.showMainMusic = showMainMusic;
+
+    // Basic iPod player logic (scoped to Music window)
+    function setupIpodPlayer(scopeRoot) {
+      const audio = scopeRoot.querySelector('#ipod-audio');
+      const titleEl = scopeRoot.querySelector('#ipod-title');
+      const artistEl = scopeRoot.querySelector('#ipod-artist');
+      const artEl = scopeRoot.querySelector('#ipod-art');
+      const fillEl = scopeRoot.querySelector('#ipod-bar-fill');
+      const curEl = scopeRoot.querySelector('#ipod-time-cur');
+      const durEl = scopeRoot.querySelector('#ipod-time-dur');
+      const seek = scopeRoot.querySelector('#ipod-seek');
+      const list = scopeRoot.querySelector('#ipod-list');
+      const statusInd = scopeRoot.querySelector('#ipod-status-ind');
+      const btnPrev = scopeRoot.querySelector('#ipod-btn-prev');
+      const btnNext = scopeRoot.querySelector('#ipod-btn-next');
+      const btnPlay = scopeRoot.querySelector('#ipod-btn-play');
+      const btnMenu = scopeRoot.querySelector('#ipod-btn-menu');
+      const btnCenter = scopeRoot.querySelector('#ipod-btn-center');
+
+      const padTime = (s)=>{
+        s = Math.max(0, Math.floor(s||0));
+        const m = Math.floor(s/60); const ss = s%60; return `${m}:${ss<10?'0':''}${ss}`;
+      };
+
+      const tracks = [
+        { title: 'demodisc_01', artist: 'lewd', src: 'crackers.mp3', cover: 'demodisccover-hq.png' },
+        { title: 'puzzle', artist: 'lewd', src: 'puzzle.mp3', cover: 'demodisccover-hq.png' },
+        { title: 'meadowtronic', artist: 'lewd', src: 'meadowtronic.mp3', cover: 'demodisccover-hq.png' },
+        { title: 'slideshow', artist: 'lewd', src: 'slideshow.mp3', cover: 'demodisccover-hq.png' },
+        { title: 'goldentime', artist: 'lewd', src: 'goldentime.mp3', cover: 'demodisccover-hq.png' }
+      ].filter(t=>!!t.src);
+
+      let index = 0;            // currently loaded track index
+      let cursor = 0;           // selection cursor when list is open
+      let listOpen = false;
+
+      function load(i) {
+        index = (i+tracks.length)%tracks.length;
+        const t = tracks[index];
+        titleEl.textContent = t.title;
+        artistEl.textContent = t.artist || '';
+        artEl.src = t.cover || 'demodisccover-hq.png';
+        audio.src = t.src;
+        audio.currentTime = 0;
+        audio.load();
+        cursor = index;
+        highlightList();
+      }
+
+      function playPause() {
+        if (!audio.src) load(index);
+        if (audio.paused) { audio.play().catch(()=>{}); } else { audio.pause(); }
+      }
+
+      function next() { load(index+1); audio.play().catch(()=>{}); }
+      function prev() { load(index-1); audio.play().catch(()=>{}); }
+
+      function toggleList() {
+        listOpen = !listOpen;
+        list.style.display = listOpen ? 'block' : 'none';
+        highlightList();
+      }
+
+      function buildList() {
+        list.innerHTML = '';
+        if (!tracks.length) { list.innerHTML = '<div class="ipod-empty">No tracks found</div>'; return; }
+        tracks.forEach((t, i)=>{
+          const row = document.createElement('div');
+          row.className = 'ipod-list-item';
+          row.innerHTML = `<div class="ipod-list-art"><img src="${t.cover || 'demodisccover-hq.png'}"/></div>
+                           <div style="min-width:0;">
+                             <div style="font-weight:700; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${t.title}</div>
+                             <div style="font-size:12px; color:#b9c7d6; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${t.artist||''}</div>
+                           </div>`;
+          row.addEventListener('click', ()=>{ load(i); audio.play().catch(()=>{}); if (listOpen) toggleList(); });
+          list.appendChild(row);
+        });
+        highlightList();
+      }
+
+      function highlightList() {
+        const rows = Array.from(list.querySelectorAll('.ipod-list-item'));
+        const activeIdx = listOpen ? cursor : index;
+        rows.forEach((r, i)=>{ r.classList.toggle('active', i===activeIdx); });
+      }
+
+      // Events
+      btnPlay.addEventListener('click', playPause);
+      btnNext.addEventListener('click', next);
+      btnPrev.addEventListener('click', prev);
+      btnMenu.addEventListener('click', toggleList);
+      btnCenter.addEventListener('click', ()=>{
+        if (listOpen) { load(cursor); audio.play().catch(()=>{}); toggleList(); }
+      });
+
+      audio.addEventListener('play', ()=>{ statusInd.textContent='▶'; });
+      audio.addEventListener('pause', ()=>{ statusInd.textContent='❚❚'; });
+      audio.addEventListener('ended', next);
+      audio.addEventListener('loadedmetadata', ()=>{ durEl.textContent = padTime(audio.duration||0); });
+      audio.addEventListener('timeupdate', ()=>{
+        curEl.textContent = padTime(audio.currentTime||0);
+        const d = Math.max(0.001, audio.duration||0); const p = Math.min(1, (audio.currentTime||0)/d);
+        fillEl.style.width = (p*100).toFixed(2)+'%';
+      });
+
+      // Click-to-seek
+      seek.addEventListener('click', (e)=>{
+        const rect = seek.getBoundingClientRect();
+        const p = Math.min(1, Math.max(0, (e.clientX - rect.left)/rect.width));
+        const d = Math.max(0, audio.duration||0);
+        audio.currentTime = p * d;
+      });
+
+      // Initialize
+      buildList();
+      load(0);
+
+      // --- Click wheel rotation behavior ---
+      const wheel = scopeRoot.querySelector('#ipod-wheel');
+      let tracking = false;
+      let lastAngle = null;
+      let accumDeg = 0;                     // accumulated angle delta
+      const stepDeg = 28;                   // degrees per list step
+      const scrubSecondsPerStep = 2;        // scrub amount when list is closed
+
+      const getAngle = (clientX, clientY) => {
+        const rect = wheel.getBoundingClientRect();
+        const cx = rect.left + rect.width/2;
+        const cy = rect.top + rect.height/2;
+        const dx = clientX - cx;
+        const dy = clientY - cy;
+        let a = Math.atan2(dy, dx) * 180/Math.PI; // -180..180, 0 at +X
+        // convert to 0..360 with 0 at top like iPod
+        a = (a + 90 + 360) % 360;
+        return a;
+      };
+
+      const onMove = (e) => {
+        if (!tracking) return;
+        const point = (e.touches && e.touches[0]) || e;
+        const angle = getAngle(point.clientX, point.clientY);
+        if (lastAngle == null) { lastAngle = angle; return; }
+        // shortest delta direction
+        let delta = angle - lastAngle;
+        if (delta > 180) delta -= 360; else if (delta < -180) delta += 360;
+        lastAngle = angle;
+        accumDeg += delta;
+        while (accumDeg >= stepDeg) {
+          accumDeg -= stepDeg;
+          if (listOpen) { cursor = (cursor + 1) % tracks.length; highlightList(); }
+          else { audio.currentTime = Math.min((audio.duration||0), (audio.currentTime||0) + scrubSecondsPerStep); }
+        }
+        while (accumDeg <= -stepDeg) {
+          accumDeg += stepDeg;
+          if (listOpen) { cursor = (cursor - 1 + tracks.length) % tracks.length; highlightList(); }
+          else { audio.currentTime = Math.max(0, (audio.currentTime||0) - scrubSecondsPerStep); }
+        }
+      };
+
+      const onStart = (e) => { tracking = true; lastAngle = null; accumDeg = 0; onMove(e); };
+      const onEnd = () => { tracking = false; lastAngle = null; accumDeg = 0; };
+
+      wheel.addEventListener('mousedown', onStart);
+      window.addEventListener('mousemove', onMove);
+      window.addEventListener('mouseup', onEnd);
+      wheel.addEventListener('touchstart', onStart, {passive:true});
+      window.addEventListener('touchmove', onMove, {passive:true});
+      window.addEventListener('touchend', onEnd);
+    }
   } else if (title === "Recycle Bin") {
     // Desktop defaults; mobile sizing handled by positionAndClampOnSpawn()
     if (!isMobile) {
@@ -386,13 +593,31 @@ function openWindow(title) {
         .controls { padding: 10px 12px; display: grid; grid-template-columns: 1fr; gap: 8px; align-items: center; }
         .controls .title { font-size: 13px; color: #333; }
         .controls audio { width: 100%; max-width: 640px; }
-        /* disabled state for the download button */
-        .download-btn { color: #003366 !important; font-weight: bold; }
+        /* Download button styling aligned with Purchase button */
+        .download-btn {
+          display: inline-block;
+          padding: 10px 14px;
+          border-radius: 6px;
+          border: 1px solid #0b5ed7;
+          background: linear-gradient(#4da3ff,#1d76ff);
+          color: #fff !important;
+          text-decoration: none;
+          font-weight: 700;
+          box-shadow: 0 2px 6px rgba(0,0,0,0.15);
+          transition: transform .15s ease, box-shadow .15s ease, background .15s ease;
+        }
+        .download-btn:hover {
+          background: linear-gradient(#5bb0ff,#2b82ff);
+          transform: translateY(-1px);
+          box-shadow: 0 4px 10px rgba(0,0,0,0.2);
+        }
         .download-btn[disabled] {
           opacity: 0.5;
           pointer-events: none;
           cursor: not-allowed;
-          color: #888 !important;
+          color: #eee !important;
+          transform: none;
+          box-shadow: 0 2px 6px rgba(0,0,0,0.1);
         }
 
         /* Mobile vertical stack: left panel above right preview */
@@ -1001,36 +1226,175 @@ function openWindow(title) {
               height: 300px; /* match previous visual height */
             }
             .store-detail-overlay .detail-hero-img {
-              display: block;
-              margin: 0 auto;
-              max-width: 85%;
-              max-height: 85%;
-              height: auto;
-              object-fit: contain;
+              position: absolute;
+              inset: 0;
+              width: 100%;
+              height: 100%;
+              object-fit: contain; /* default for first image */
+              opacity: 1;
+              transition: opacity 200ms ease;
+            }
+            .store-detail-overlay .detail-gallery {
+              margin-top: 10px;
+              display: grid;
+              grid-template-columns: repeat(auto-fill, minmax(72px, 1fr));
+              gap: 8px;
+            }
+            .store-detail-overlay .detail-thumb {
+              background:#fff;
+              border:1px solid #ddd;
+              border-radius:6px;
+              height:72px;
+              display:flex;align-items:center;justify-content:center;
+              overflow:hidden;
+              cursor:pointer;
+              transition: box-shadow .15s ease, transform .15s ease, border-color .15s ease;
+            }
+            .store-detail-overlay .detail-thumb:hover { box-shadow: 0 2px 10px rgba(0,0,0,0.12); transform: translateY(-1px); }
+            .store-detail-overlay .detail-thumb.selected { border-color:#4da3ff; box-shadow: 0 0 0 2px rgba(77,163,255,0.25) inset; }
+            .store-detail-overlay .detail-thumb img { max-width:100%; max-height:100%; object-fit:contain; display:block; }
+            /* Purchase button hover */
+            .store-detail-overlay .detail-buy:hover {
+              background: linear-gradient(#5bb0ff,#2b82ff) !important;
+              transform: translateY(-1px);
+              box-shadow: 0 4px 10px rgba(0,0,0,0.2);
             }
           </style>
           <button class="detail-back" style="position:absolute;top:8px;left:8px;padding:8px 12px;border-radius:6px;border:1px solid #999;background:linear-gradient(#f8f8f8,#e6e6e6);cursor:pointer;z-index:21;">← Back</button>
           <div class="detail-wrap" style="max-width: 900px; margin: 0 auto; padding: 56px 16px 16px; display: grid; grid-template-columns: 1fr 1fr; gap: 16px; align-items: start; position: relative;">
-            <div class="detail-hero" style="position: relative; min-height: 300px; border: 1px solid #ddd; border-radius: 8px; background:#fff; display:flex; align-items:center; justify-content:center; overflow:hidden;">
-              ${heroImgSrc ? `<img class="detail-hero-img" src="${heroImgSrc}" alt="${product.title}" />` : ''}
+            <div>
+              <div class="detail-hero" style="position: relative; min-height: 300px; border: 1px solid #ddd; border-radius: 8px; background:#fff; display:flex; align-items:center; justify-content:center; overflow:hidden;">
+                ${heroImgSrc ? `<img class="detail-hero-img imgA" src="${heroImgSrc}" alt="${product.title}" />` : ''}
+                <img class="detail-hero-img imgB" alt="${product.title}" aria-hidden="true" style="opacity:0;" />
+              </div>
+              <div class="detail-gallery" id="detail-gallery"></div>
             </div>
-            <div class="detail-info" style="background:#fff;border:1px solid #ddd;border-radius:8px;padding:16px;"> 
-              <h2 style="margin:0 0 8px 0; font-size:28px;">${product.title}</h2>
-              <div style="margin:0 0 12px 0; font-size:15px; color:#666; text-transform: none;">${product.subtitle ?? (product.type || '')}</div>
-              <div style="font-weight:800; font-size:20px; color:#111; margin-bottom: 14px;">£${(product.price ?? 0).toFixed(2)}</div>
-              <a class="detail-buy" href="https://elasticstage.com/lew-dunit/releases/whodunit-album" target="_blank" rel="noopener" style="display:inline-block;padding:10px 14px;border-radius:6px;border:1px solid #0b5ed7;background:linear-gradient(#4da3ff,#1d76ff);color:#fff;text-decoration:none;font-weight:700;box-shadow:0 2px 6px rgba(0,0,0,0.15);">Purchase</a>
-            </div>
-            <div class="detail-desc" style="grid-column: 2 / 3; background:#fff;border:1px solid #ddd;border-radius:8px;padding:14px; color:#333; line-height:1.5; font-size:14px;">
-              <div style="font-weight:700; margin-bottom:6px;">Description</div>
-              <div>'Whodunit?' on black vinyl. Includes 2 bonus tracks. Mixes and tracklist differ from digital/final version.</div>
+            <div class="detail-right" style="display:flex; flex-direction:column; gap:12px;">
+              <div class="detail-info" style="background:#fff;border:1px solid #ddd;border-radius:8px;padding:16px;"> 
+                <h2 style="margin:0 0 2px 0; font-size:28px;">${product.title}</h2>
+                <div style="margin:0 0 12px 0; font-size:15px; color:#666; text-transform: none;">${product.subtitle ?? (product.type || '')}</div>
+                <div style="font-weight:800; font-size:20px; color:#111; margin-bottom: 14px;">£${(product.price ?? 0).toFixed(2)}</div>
+                <a class="detail-buy" href="https://elasticstage.com/lew-dunit/releases/whodunit-album" target="_blank" rel="noopener" style="display:inline-block;padding:10px 14px;border-radius:6px;border:1px solid #0b5ed7;background:linear-gradient(#4da3ff,#1d76ff);color:#fff;text-decoration:none;font-weight:700;box-shadow:0 2px 6px rgba(0,0,0,0.15);">Purchase</a>
+              </div>
+              <div class="detail-desc" style="background:#fff;border:1px solid #ddd;border-radius:8px;padding:14px; color:#333; line-height:1.5; font-size:14px;">
+                <div style="font-weight:700; margin-bottom:6px;">Description</div>
+                <div>'Whodunit?' on black vinyl. Includes 2 bonus tracks. Mixes and tracklist differ from digital/final version.</div>
+              </div>
             </div>
           </div>
         `;
 
-        const heroImg = overlay.querySelector('.detail-hero-img');
+        const heroImgA = overlay.querySelector('.detail-hero-img.imgA');
+        const heroImgB = overlay.querySelector('.detail-hero-img.imgB');
         const backBtn = overlay.querySelector('.detail-back');
+        const galleryEl = overlay.querySelector('#detail-gallery');
 
         // No carousel: nothing extra to initialize
+
+        // Build gallery thumbnails using known product images (below the hero)
+        if (galleryEl) {
+          const galleryImages = [
+            heroImgSrc,
+            'whodunitproducts/whodunitvinyl1.jpg',
+            'whodunitproducts/whodunitvinyl2.jpg',
+            'whodunitproducts/whodunitvinyl3.jpg',
+            'whodunitproducts/whodunitvinyl4.jpg',
+            'whodunitproducts/whodunit.gif'
+          ].filter(Boolean);
+
+          // Helper to apply sizing to a specific element:
+          // index 0 = contain; others = cover; GIFs fill height (height:100%, width:auto).
+          function applyHeroFitTo(el, index, src) {
+            if (!el) return;
+            const isGif = (src || '').toLowerCase().endsWith('.gif');
+            if (isGif) {
+              // Center the GIF and fill height
+              el.style.objectFit = 'contain';
+              el.style.width = 'auto';
+              el.style.height = '100%';
+              el.style.left = '50%';
+              el.style.top = '50%';
+              el.style.right = '';
+              el.style.bottom = '';
+              el.style.transform = 'translate(-50%, -50%)';
+            } else if (index === 0) {
+              // Reset to fill box and remove centering transform
+              el.style.objectFit = 'contain';
+              el.style.width = '100%';
+              el.style.height = '100%';
+              el.style.left = '0';
+              el.style.top = '0';
+              el.style.right = '0';
+              el.style.bottom = '0';
+              el.style.transform = 'none';
+            } else {
+              // Reset to fill box and remove centering transform
+              el.style.objectFit = 'cover';
+              el.style.width = '100%';
+              el.style.height = '100%';
+              el.style.left = '0';
+              el.style.top = '0';
+              el.style.right = '0';
+              el.style.bottom = '0';
+              el.style.transform = 'none';
+            }
+          }
+
+          // Crossfade between A and B layers. Handles rapid clicks via token.
+          let fadeToken = 0;
+          let useAasFront = true;
+          function swapHero(nextSrc, idx) {
+            if (!heroImgA || !heroImgB || !nextSrc) return;
+            const token = ++fadeToken;
+            const front = useAasFront ? heroImgA : heroImgB;
+            const back = useAasFront ? heroImgB : heroImgA;
+            // Prepare back layer
+            applyHeroFitTo(back, isNaN(idx) ? 0 : idx, nextSrc);
+            back.src = nextSrc;
+            back.style.opacity = '0';
+            // Force reflow before starting transition
+            // eslint-disable-next-line no-unused-expressions
+            back.offsetHeight;
+            // Start simultaneous fade
+            front.style.opacity = '0';
+            back.style.opacity = '1';
+            const onEnd = (e) => {
+              if (e.propertyName !== 'opacity' || token !== fadeToken) return;
+              front.removeEventListener('transitionend', onEnd);
+              useAasFront = !useAasFront; // swap roles
+            };
+            front.addEventListener('transitionend', onEnd);
+          }
+
+          galleryEl.innerHTML = galleryImages.map((src, i) => `
+            <div class="detail-thumb${i===0 ? ' selected' : ''}" data-src="${src}" data-index="${i}">
+              <img src="${src}" alt="${product.title} preview ${i+1}">
+            </div>
+          `).join('');
+
+          const thumbs = Array.from(galleryEl.querySelectorAll('.detail-thumb'));
+          // Ensure initial fit corresponds to first image (contained)
+          if (heroImgA) {
+            applyHeroFitTo(heroImgA, 0, heroImgA.src || '');
+            heroImgA.style.opacity = '1';
+          }
+          if (heroImgB) {
+            applyHeroFitTo(heroImgB, 1, heroImgB.src || '');
+            heroImgB.style.opacity = '0';
+          }
+          thumbs.forEach(t => {
+            t.addEventListener('click', () => {
+              const nextSrc = t.getAttribute('data-src');
+              const idxStr = t.getAttribute('data-index');
+              const idx = idxStr ? parseInt(idxStr, 10) : 0;
+              if (nextSrc) {
+                swapHero(nextSrc, idx);
+              }
+              thumbs.forEach(x => x.classList.remove('selected'));
+              t.classList.add('selected');
+            });
+          });
+        }
 
         function showOverlayNoAnim() {
           overlay.style.opacity = '1';
@@ -2414,21 +2778,27 @@ function openWindow(title) {
     function triggerOpenAndRedirect() {
       if (opened) return;
       opened = true;
+      // Attempt to open a blank tab/window synchronously during user gesture
+      let popup = null;
+      try { popup = window.open('', '_blank'); } catch {}
       // Play door open sound (inline, simple)
       try { const s = new Audio('dooropen.mp3'); s.play().catch(()=>{}); } catch {}
       stageEl.classList.add('open');
-      // After the right panel finishes its (shorter) transition, open link in new tab
+      // After the right panel finishes its (shorter) transition, navigate
       const handler = (e) => {
-        if (e.propertyName === 'transform') {
-          rightHalf.removeEventListener('transitionend', handler);
-          // open a bit sooner and in a new tab
-          window.open(preSaveUrl, '_blank', 'noopener');
+        if (e.propertyName !== 'transform') return;
+        rightHalf.removeEventListener('transitionend', handler);
+        // If popup opened, navigate it; otherwise fallback to same-tab navigation
+        if (popup && !popup.closed) {
+          try { popup.location.href = preSaveUrl; return; } catch {}
         }
+        window.location.href = preSaveUrl;
       };
       rightHalf.addEventListener('transitionend', handler);
     }
-    // Only clicks on the door open it
+    // Click and touch to open (ensure mobile reliability)
     doorEl.addEventListener('click', triggerOpenAndRedirect, { once: true });
+    doorEl.addEventListener('touchend', (e) => { e.preventDefault(); triggerOpenAndRedirect(); }, { once: true });
   } else {
     content.innerHTML = `<p>This is the ${title} window.</p>`;
   }
@@ -3049,6 +3419,32 @@ function openAlbumModal(coverSrc, downloadSrc) {
       link.click();
       document.body.removeChild(link);
     });
+
+    // Apply primary button styling and hover effect to modal download button
+    Object.assign(downloadBtn.style, {
+      display: 'inline-block',
+      padding: '10px 14px',
+      borderRadius: '6px',
+      border: '1px solid #0b5ed7',
+      background: 'linear-gradient(#4da3ff,#1d76ff)',
+      color: '#fff',
+      textDecoration: 'none',
+      fontWeight: '700',
+      boxShadow: '0 2px 6px rgba(0,0,0,0.15)',
+      transition: 'transform .15s ease, box-shadow .15s ease, background .15s ease'
+    });
+    const hoverIn = () => {
+      downloadBtn.style.background = 'linear-gradient(#5bb0ff,#2b82ff)';
+      downloadBtn.style.transform = 'translateY(-1px)';
+      downloadBtn.style.boxShadow = '0 4px 10px rgba(0,0,0,0.2)';
+    };
+    const hoverOut = () => {
+      downloadBtn.style.background = 'linear-gradient(#4da3ff,#1d76ff)';
+      downloadBtn.style.transform = 'none';
+      downloadBtn.style.boxShadow = '0 2px 6px rgba(0,0,0,0.15)';
+    };
+    downloadBtn.addEventListener('mouseenter', hoverIn);
+    downloadBtn.addEventListener('mouseleave', hoverOut);
   }
 }
 
