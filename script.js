@@ -545,6 +545,273 @@ function openWindow(title) {
       window.addEventListener('touchmove', onMove, {passive:true});
       window.addEventListener('touchend', onEnd);
     }
+  } else if (title === "Whodunit?") {
+    if (!isMobile) {
+      win.style.width = '760px';
+      win.style.height = '520px';
+    }
+    content.innerHTML = `
+      <style>
+        .whodunit-stage {
+          position: relative;
+          width: 100%;
+          height: 100%;
+          background: #000; /* fill with black */
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          overflow: hidden;
+          perspective: 1200px; /* for 3D door swing */
+          /* subtle CRT scanline feel */
+          background-image: repeating-linear-gradient(
+            to bottom,
+            rgba(255,255,255,0.02) 0px,
+            rgba(255,255,255,0.02) 1px,
+            transparent 1px,
+            transparent 3px
+          );
+        }
+
+        /* White void behind the door */
+        .whodunit-void {
+          position: absolute;
+          width: min(50%, 420px);
+          height: min(60%, 360px);
+          background: #fff;
+          box-shadow:
+            0 0 28px 8px rgba(255,255,255,0.5),
+            0 0 72px 16px rgba(255,255,255,0.25),
+            inset 0 0 60px rgba(255,255,255,0.9);
+          transition: box-shadow 300ms ease;
+        }
+        /* Stronger glow when door opens */
+        .whodunit-stage.open .whodunit-void {
+          box-shadow:
+            0 0 70px 20px rgba(255,255,255,0.95),
+            0 0 200px 40px rgba(255,255,255,0.55),
+            inset 0 0 120px rgba(255,255,255,1);
+        }
+
+        /* Door assembly */
+        .whodunit-door {
+          position: relative;
+          width: min(50%, 420px);
+          height: min(60%, 360px);
+          display: flex;
+          transform-style: preserve-3d;
+          cursor: pointer; /* door only is clickable */
+          z-index: 4; /* below hint/overlay */
+        }
+
+        /* Hover hint */
+        .whodunit-hint {
+          position: absolute;
+          inset: 0;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          font-family: inherit;
+          font-weight: 800;
+          font-size: clamp(10px, 3.6vw, 28px);
+          letter-spacing: 0.5px;
+          color: rgba(255,255,255,0.9);
+          text-shadow: 0 0 10px rgba(63, 63, 63, 0.32), 0 4px 0 rgba(0,0,0,0.8);
+          opacity: 0;
+          transition: opacity 160ms ease;
+          pointer-events: none; /* allow clicks to pass */
+          /* Sharper pixel-like look */
+          -webkit-font-smoothing: none;
+          -moz-osx-font-smoothing: auto;
+          font-smooth: never;
+          text-rendering: optimizeSpeed;
+          image-rendering: pixelated;
+          z-index: 6; /* above overlay and door */
+        }
+        .whodunit-door:hover + .whodunit-hint,
+        .whodunit-door:hover .whodunit-hint,
+        .whodunit-door:hover ~ .whodunit-hint { opacity: 1; }
+        .whodunit-stage.open .whodunit-hint { opacity: 0; }
+
+        .door-half {
+          flex: 1 1 50%;
+          /* retro pixelated plank look */
+          /* remove visible stripes; keep subtle pixel texture */
+          background:
+            url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='2' height='2' viewBox='0 0 2 2'><rect width='1' height='1' fill='rgba(255,255,255,0.04)'/><rect x='1' y='1' width='1' height='1' fill='rgba(0,0,0,0.06)'/></svg>") repeat,
+            linear-gradient(#3a2516, #3a2516);
+          background-size: 2px 2px, auto;
+          border: 2px solid #5a4433;
+          /* stacked hard-edged shadows for a pixel-y outline */
+          box-shadow:
+            0 0 0 2px rgba(255,255,255,0.05) inset,
+            0 0 0 4px rgba(0,0,0,0.2) inset,
+            0 8px 0 rgba(0,0,0,0.4);
+          transform-origin: center left;
+          transition: transform 600ms cubic-bezier(0.2, 0.8, 0.2, 1);
+          position: relative;
+          image-rendering: pixelated;
+          border-radius: 0; /* no rounding for retro look */
+        }
+        .door-half.right { transform-origin: center right; }
+
+        /* Simple paneling effect */
+        .door-half::before,
+        .door-half::after {
+          content: "";
+          position: absolute;
+          left: 10%; right: 10%;
+          border: 1px solid rgba(0,0,0,0.35);
+          background: rgba(255,255,255,0.04);
+        }
+        .door-half::before { top: 14%; height: 28%; }
+        .door-half::after  { bottom: 14%; height: 28%; }
+
+        /* Handles */
+        .handle {
+          position: absolute;
+          top: 50%;
+          width: 12px; height: 12px;
+          background: radial-gradient(circle at 30% 30%, #f8e7a8, #c9a64f 60%, #8a6b2a);
+          border-radius: 50%;
+          box-shadow: 0 0 6px rgba(0,0,0,0.6);
+          transform: translateY(-50%);
+          image-rendering: pixelated;
+        }
+        .left .handle { right: 8%; }
+        .right .handle { left: 8%; }
+
+        /* Open state */
+        .whodunit-stage.open .door-half.left  { transform: rotateY(-100deg); }
+        .whodunit-stage.open .door-half.right { transform: rotateY(100deg); }
+
+        /* Retro overlay above content for CRT/pixel vibe */
+        .retro-overlay {
+          position: absolute;
+          inset: 0;
+          z-index: 5; /* above door, below hint */
+          pointer-events: none;
+          /* multiple layered effects: scanlines + vignette + dither */
+          background-image:
+            /* scanlines */
+            repeating-linear-gradient(
+              to bottom,
+              rgba(255,255,255,0.06) 0px,
+              rgba(255,255,255,0.06) 1px,
+              rgba(0,0,0,0.0) 1px,
+              rgba(0,0,0,0.0) 3px
+            ),
+            /* subtle vignette */
+            radial-gradient(ellipse at center, rgba(0,0,0,0) 60%, rgba(0,0,0,0.35) 100%),
+            /* tiny checker dither */
+            url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='2' height='2' viewBox='0 0 2 2'><rect width='1' height='1' fill='rgba(255,255,255,0.05)'/><rect x='1' y='1' width='1' height='1' fill='rgba(255,255,255,0.05)'/></svg>");
+          background-size: auto, auto, 2px 2px;
+          mix-blend-mode: overlay;
+          opacity: 0.35;
+        }
+      </style>
+
+      <div id="whodunit-stage" class="whodunit-stage" aria-label="Open the door">
+        <div class="whodunit-void" aria-hidden="true"></div>
+        <div class="retro-overlay" aria-hidden="true"></div>
+        <div class="whodunit-door">
+          <div class="door-half left"><span class="handle"></span></div>
+          <div class="door-half right"><span class="handle"></span></div>
+          <div class="whodunit-hint">Open?</div>
+        </div>
+      </div>
+    `;
+
+    // Remove padding/scroll to ensure full-bleed
+    content.style.padding = '0';
+    content.style.overflow = 'hidden';
+
+    // Click to open, then redirect after animation completes
+    const preSaveUrl = 'https://share.amuse.io/VbMvlRPQelae'; 
+    const stageEl = content.querySelector('#whodunit-stage');
+    const doorEl = content.querySelector('.whodunit-door');
+    const rightHalf = content.querySelector('.door-half.right');
+    let opened = false;
+    function triggerOpenAndRedirect() {
+      if (opened) return;
+      opened = true;
+      // Play door open sound (inline, simple)
+      try { const s = new Audio('dooropen.mp3'); s.play().catch(()=>{}); } catch {}
+      stageEl.classList.add('open');
+      // After the right panel finishes its (shorter) transition, open link in new tab
+      const handler = (e) => {
+        if (e.propertyName === 'transform') {
+          rightHalf.removeEventListener('transitionend', handler);
+          // open a bit sooner and in a new tab
+          window.open(preSaveUrl, '_blank', 'noopener');
+        }
+      };
+      rightHalf.addEventListener('transitionend', handler);
+    }
+    // Only clicks on the door open it
+    doorEl.addEventListener('click', triggerOpenAndRedirect, { once: true });
+  } else if (title === "Info") {
+    if (!isMobile) {
+      win.style.width = '520px';
+      win.style.height = '420px';
+      win.style.maxWidth = 'none';
+      win.style.maxHeight = 'none';
+    }
+
+    content.innerHTML = `
+      <style>
+        .info-root { display:flex; flex-direction:column; height:100%; padding:8px; box-sizing:border-box; background:#000; color:#00ff88; font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, "Liberation Mono", Consolas, monospace; }
+        .info-terminal-line { margin:0 0 4px; }
+        .prompt { color:#0f8; opacity:0.9; margin-right:6px; }
+        #info-specs-text { white-space: pre-wrap; word-break: break-word; font-size:12px; color:#00ff88; }
+        .cursor { display:inline-block; margin-left:4px; color:#00ff88; animation: blink 1s steps(1) infinite; }
+        @keyframes blink { 50% { opacity: 0; } }
+        .info-divider { color:#00ff88; opacity:0.9; margin:8px 0 8px; }
+        .info-body { flex:1 1 auto; display:flex; align-items:flex-start; }
+        .info-welcome { font-size:14px; line-height:1.4; color:#00ff88; margin:2px; }
+        .info-links { flex:0 0 auto; margin:0; margin-top:auto; padding-top:8px; color:#00ff88; }
+        .info-links a { color:#00ff88; text-decoration: underline; margin-right:10px; }
+      </style>
+      <div class="info-root">
+        <div class="info-terminal-line"><span class="prompt">LDOS></span><span id="info-specs-text"></span><span class="cursor">█</span></div>
+        <div class="info-divider">-------------------------------------------------------------</div>
+        <div class="info-body">
+          <p class="info-welcome">Welcome to my website! Here you can find all things related to my artist alias "Lew_dunit".</p>
+        </div>
+        <div class="info-links">
+          <a href="https://bandcamp.com/" target="_blank" rel="noopener">Bandcamp</a>
+          <a href="https://www.youtube.com/" target="_blank" rel="noopener">YouTube</a>
+          <a href="https://soundcloud.com/" target="_blank" rel="noopener">SoundCloud</a>
+          <a href="https://open.spotify.com/" target="_blank" rel="noopener">Spotify</a>
+          <a href="https://music.apple.com/" target="_blank" rel="noopener">Apple Music</a>
+        </div>
+      </div>
+    `;
+
+    // Remove default inner padding so black background fills window
+    win.classList.add('no-padding');
+
+    // Populate simple single-line specs text at the top (Info window only)
+    (function(root) {
+      const el = root.querySelector('#info-specs-text');
+      if (!el) return;
+      function getGPU() {
+        try {
+          const c = document.createElement('canvas');
+          const gl = c.getContext('webgl') || c.getContext('experimental-webgl');
+          if (!gl) return null;
+          const ext = gl.getExtension('WEBGL_debug_renderer_info');
+          return ext ? (gl.getParameter(ext.UNMASKED_RENDERER_WEBGL) || gl.getParameter(ext.UNMASKED_VENDOR_WEBGL)) : null;
+        } catch { return null; }
+      }
+      const ua = navigator.userAgent;
+      const threads = typeof navigator.hardwareConcurrency === 'number' ? `${navigator.hardwareConcurrency} threads` : 'threads: ?';
+      const mem = navigator.deviceMemory ? `${navigator.deviceMemory} GB RAM` : 'RAM: ?';
+      const res = `${screen.width}x${screen.height} @ ${Math.round(devicePixelRatio * 100)/100}x`;
+      const tz = (Intl && Intl.DateTimeFormat) ? Intl.DateTimeFormat().resolvedOptions().timeZone : 'Timezone: ?';
+      const gpu = getGPU();
+      el.textContent = `UA: ${ua} • ${threads} • ${mem} • Screen ${res} • ${tz}${gpu ? ' • GPU: ' + gpu : ''}`;
+    })(content);
+
   } else if (title === "Recycle Bin") {
     // Desktop defaults; mobile sizing handled by positionAndClampOnSpawn()
     if (!isMobile) {
@@ -946,6 +1213,29 @@ function openWindow(title) {
           overflow: hidden; /* prevent outer scrollbar */
         }
 
+        /* Loading overlay shown while Store content initializes */
+        .store-loading {
+          position: absolute;
+          inset: 0 0 40px 0; /* leave space for bottom bar row */
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          background: rgba(255,255,255,0.92);
+          z-index: 10;
+          pointer-events: none;
+        }
+        .store-loading img {
+          width: 96px;
+          height: 96px;
+          image-rendering: auto;
+          animation: store-spin 1.2s linear infinite;
+          filter: drop-shadow(0 4px 10px rgba(0,0,0,0.25));
+        }
+        @keyframes store-spin {
+          from { transform: rotate(0deg); }
+          to { transform: rotate(360deg); }
+        }
+
         /* Products grid */
         .product-grid {
           display: grid;
@@ -1162,6 +1452,9 @@ function openWindow(title) {
       </style>
 
       <div class="store-container">
+        <div id="store-loading" class="store-loading">
+          <img src="wiiload.webp" alt="Loading" />
+        </div>
         <div class="product-grid" id="store-products"></div>
 
         <div class="store-bottom-bar">
@@ -1175,6 +1468,7 @@ function openWindow(title) {
         </div>
       </div>
     `;
+
     // Use the window's scrollbar and remove default padding
     win.classList.add('no-padding');
 
@@ -1186,6 +1480,29 @@ function openWindow(title) {
       ];
       const grid = content.querySelector('#store-products');
       const buttons = Array.from(content.querySelectorAll('.store-filter-btn'));
+      const loadingEl = content.querySelector('#store-loading');
+      let firstLoad = true;
+      // If we've already shown the Store once this session, don't show the loader again
+      if (window.__storeSpinnerShown) {
+        if (loadingEl) loadingEl.style.display = 'none';
+        firstLoad = false;
+      }
+
+      // Wait until current images in grid finish loading (or timeout) before hiding loader
+      function whenImagesSettled(timeoutMs = 1500) {
+        const imgs = Array.from(grid.querySelectorAll('img'));
+        if (!imgs.length) {
+          return Promise.resolve();
+        }
+        const timer = new Promise(resolve => setTimeout(resolve, timeoutMs));
+        const waits = imgs.map(img => new Promise(res => {
+          if (img.complete) return res();
+          const done = () => { img.removeEventListener('load', done); img.removeEventListener('error', done); res(); };
+          img.addEventListener('load', done);
+          img.addEventListener('error', done);
+        }));
+        return Promise.race([Promise.all(waits), timer]);
+      }
 
       // Helper: open product detail overlay with animated image transition
       function openProductDetail(product, sourceCard) {
@@ -1278,7 +1595,7 @@ function openWindow(title) {
               </div>
               <div class="detail-desc" style="background:#fff;border:1px solid #ddd;border-radius:8px;padding:14px; color:#333; line-height:1.5; font-size:14px;">
                 <div style="font-weight:700; margin-bottom:6px;">Description</div>
-                <div>'Whodunit?' on black vinyl. Includes 2 bonus tracks. Mixes and tracklist differ from digital/final version.</div>
+                <div>'Whodunit?' on black vinyl. Includes 2 bonus tracks. Mixes and tracklist order differs slightly from digital/final version.</div>
               </div>
             </div>
           </div>
@@ -1462,6 +1779,15 @@ function openWindow(title) {
             </div>
             <div class="product-price" style="position:absolute;left:12px;right:12px;bottom:10px;font-size:14px;color:#222;font-weight:700;text-align:left;pointer-events:none;z-index:3;">£${(p.price ?? 0).toFixed(2)}</div>
           </div>`).join('');
+
+        // After the first render, hide the loading overlay once images have settled
+        if (firstLoad) {
+          whenImagesSettled(1800).then(() => {
+            if (loadingEl) loadingEl.style.display = 'none';
+            firstLoad = false;
+            window.__storeSpinnerShown = true;
+          });
+        }
 
         // Click to open detail for Whodunit? Vinyl (p1)
         const whodunitVinylCard = grid.querySelector('.product-item[data-id="p1"]');
@@ -3238,14 +3564,14 @@ function addTaskbarIcon(title) {
     case 'Recycle Bin':
       imgSrc = 'recyclebin.png';
       break;
-    case 'Socials':
-      imgSrc = 'socials.png';
-      break;
     case 'Whodunit?':
       imgSrc = 'bug.png';
       break;
     case 'demodisc_01':
       imgSrc = 'demodisc01.png';
+      break;
+    case 'Info':
+      imgSrc = 'info.ico';
       break;
   }
 
