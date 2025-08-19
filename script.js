@@ -1216,19 +1216,19 @@ function openWindow(title) {
         /* Loading overlay shown while Store content initializes */
         .store-loading {
           position: absolute;
-          inset: 0 0 40px 0; /* leave space for bottom bar row */
+          inset: 0; /* cover everything including bottom bar */
           display: flex;
           align-items: center;
           justify-content: center;
-          background: rgba(255,255,255,0.92);
+          background: #fff; /* solid white bg while loading */
           z-index: 10;
           pointer-events: none;
         }
         .store-loading img {
           width: 96px;
-          height: 96px;
+          height: auto; /* maintain aspect ratio */
           image-rendering: auto;
-          animation: store-spin 1.2s linear infinite;
+          animation: store-spin 0.6s linear infinite;
           filter: drop-shadow(0 4px 10px rgba(0,0,0,0.25));
         }
         @keyframes store-spin {
@@ -1481,15 +1481,17 @@ function openWindow(title) {
       const grid = content.querySelector('#store-products');
       const buttons = Array.from(content.querySelectorAll('.store-filter-btn'));
       const loadingEl = content.querySelector('#store-loading');
-      let firstLoad = true;
-      // If we've already shown the Store once this session, don't show the loader again
-      if (window.__storeSpinnerShown) {
-        if (loadingEl) loadingEl.style.display = 'none';
-        firstLoad = false;
-      }
+      let firstLoad = true; // always show spinner on open
+      const spinnerStart = (typeof performance !== 'undefined' && performance.now) ? performance.now() : Date.now();
+      const MIN_SPIN_MS = 250; // faster: brief but noticeable
+
+      // Expose a readiness promise so music can wait until loaded
+      let storeReadyResolve;
+      const storeReadyPromise = new Promise(r => { storeReadyResolve = r; });
+      content.__storeReadyPromise = storeReadyPromise;
 
       // Wait until current images in grid finish loading (or timeout) before hiding loader
-      function whenImagesSettled(timeoutMs = 1500) {
+      function whenImagesSettled(timeoutMs = 900) {
         const imgs = Array.from(grid.querySelectorAll('img'));
         if (!imgs.length) {
           return Promise.resolve();
@@ -1782,10 +1784,15 @@ function openWindow(title) {
 
         // After the first render, hide the loading overlay once images have settled
         if (firstLoad) {
-          whenImagesSettled(1800).then(() => {
-            if (loadingEl) loadingEl.style.display = 'none';
-            firstLoad = false;
-            window.__storeSpinnerShown = true;
+          whenImagesSettled(900).then(() => {
+            const now = (typeof performance !== 'undefined' && performance.now) ? performance.now() : Date.now();
+            const elapsed = now - spinnerStart;
+            const wait = Math.max(0, MIN_SPIN_MS - elapsed);
+            setTimeout(() => {
+              if (loadingEl) loadingEl.style.display = 'none';
+              firstLoad = false;
+              try { storeReadyResolve && storeReadyResolve(); } catch {}
+            }, wait);
           });
         }
 
@@ -2051,9 +2058,10 @@ function openWindow(title) {
         'goldentime.mp3',
         'meadowtronic.mp3',
         'checkmiiout.mp3',
-        'puzzle.mp3',
+        //'puzzle.mp3',
         'slideshow.mp3',
-        'que.mp3'
+        'que.mp3',
+        'losangeles.mp3'
       ];
       const audio = new Audio();
       audio.volume = 0.3;
@@ -2098,11 +2106,18 @@ function openWindow(title) {
         playIndex(nextIdx);
       }
 
-      // Start playback after slight delay, avoid repeating last track from previous session
-      setTimeout(() => {
+      // Start playback after the Store has finished loading (spinner hidden),
+      // then wait a tiny delay to avoid jank. Fallback to immediate timer if no promise.
+      const startMusic = () => {
         const startIdx = pickNextIndex(storeMusicState.lastIndex);
         playIndex(startIdx);
-      }, 50);
+      };
+      const ready = content.__storeReadyPromise;
+      if (ready && typeof ready.then === 'function') {
+        ready.then(() => setTimeout(startMusic, 50));
+      } else {
+        setTimeout(startMusic, 50);
+      }
       audio.addEventListener('ended', playNext);
 
       // Bind audio controls into bottom bar
