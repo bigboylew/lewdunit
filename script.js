@@ -1490,6 +1490,41 @@ function openWindow(title) {
       const storeReadyPromise = new Promise(r => { storeReadyResolve = r; });
       content.__storeReadyPromise = storeReadyPromise;
 
+      // Preload all product detail imagery up-front so opening a product doesn't show loading
+      function preloadImages(urls, timeoutMs = 2000) {
+        const list = Array.from(new Set(urls)).filter(Boolean);
+        if (!list.length) return Promise.resolve();
+        const timer = new Promise(res => setTimeout(res, timeoutMs));
+        const waits = list.map(src => new Promise(res => {
+          try {
+            const img = new Image();
+            const done = () => { img.onload = null; img.onerror = null; res(); };
+            img.onload = done; img.onerror = done; img.src = src;
+            if (img.complete) done();
+          } catch { res(); }
+        }));
+        return Promise.race([Promise.all(waits), timer]);
+      }
+
+      // Build a list of known current and detail gallery images to cache
+      const detailPreloadUrls = new Set();
+      products.forEach(p => {
+        if (p.img) detailPreloadUrls.add(p.img);
+        (Array.isArray(p.images) ? p.images : []).forEach(u => detailPreloadUrls.add(u));
+      });
+      // Known gallery for Whodunit detail
+      ['whodunitproducts/whodunitvinyl1.jpg',
+       'whodunitproducts/whodunitvinyl2.jpg',
+       'whodunitproducts/whodunitvinyl3.jpg',
+       'whodunitproducts/whodunitvinyl4.jpg',
+       'whodunitproducts/whodunit.gif']
+        .forEach(u => detailPreloadUrls.add(u));
+
+      const detailPreloadPromise = preloadImages(Array.from(detailPreloadUrls), 2000)
+        .then(() => { content.__detailImagesPreloaded = true; })
+        .catch(() => {});
+      content.__detailPreloadPromise = detailPreloadPromise;
+
       // Wait until current images in grid finish loading (or timeout) before hiding loader
       function whenImagesSettled(timeoutMs = 900) {
         const imgs = Array.from(grid.querySelectorAll('img'));
@@ -1603,6 +1638,38 @@ function openWindow(title) {
           </div>
         `;
 
+        // Detail-level loader overlay: only add if preloading hasn't completed
+        let detailLoader = null;
+        if (!content.__detailImagesPreloaded) {
+          detailLoader = document.createElement('div');
+          Object.assign(detailLoader.style, {
+            position: 'absolute', left: '0', right: '0', top: '0', bottom: '0',
+            background: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center',
+            zIndex: '25', pointerEvents: 'none'
+          });
+          const detailSpinner = document.createElement('img');
+          detailSpinner.src = 'wiiload.webp';
+          detailSpinner.alt = 'Loading';
+          detailSpinner.style.width = '96px';
+          detailSpinner.style.height = 'auto';
+          detailSpinner.style.animation = 'store-spin 0.6s linear infinite';
+          detailLoader.appendChild(detailSpinner);
+          overlay.appendChild(detailLoader);
+        }
+
+        function whenDetailImagesSettled(timeoutMs = 1200) {
+          const imgs = Array.from(overlay.querySelectorAll('img'));
+          if (!imgs.length) return Promise.resolve();
+          const timer = new Promise(r => setTimeout(r, timeoutMs));
+          const waits = imgs.map(img => new Promise(res => {
+            if (img.complete) return res();
+            const done = () => { img.removeEventListener('load', done); img.removeEventListener('error', done); res(); };
+            img.addEventListener('load', done);
+            img.addEventListener('error', done);
+          }));
+          return Promise.race([Promise.all(waits), timer]);
+        }
+
         const heroImgA = overlay.querySelector('.detail-hero-img.imgA');
         const heroImgB = overlay.querySelector('.detail-hero-img.imgB');
         const backBtn = overlay.querySelector('.detail-back');
@@ -1715,6 +1782,18 @@ function openWindow(title) {
           });
         }
 
+        // Hide detail loader (if present) after images are ready (or timeout) with brief minimum spinner time
+        if (detailLoader) {
+          const detailSpinStart = (typeof performance !== 'undefined' && performance.now) ? performance.now() : Date.now();
+          const MIN_DETAIL_SPIN_MS = 250;
+          whenDetailImagesSettled(1200).then(() => {
+            const now = (typeof performance !== 'undefined' && performance.now) ? performance.now() : Date.now();
+            const elapsed = now - detailSpinStart;
+            const wait = Math.max(0, MIN_DETAIL_SPIN_MS - elapsed);
+            setTimeout(() => { if (detailLoader) detailLoader.style.display = 'none'; }, wait);
+          });
+        }
+
         function showOverlayNoAnim() {
           overlay.style.opacity = '1';
         }
@@ -1784,7 +1863,8 @@ function openWindow(title) {
 
         // After the first render, hide the loading overlay once images have settled
         if (firstLoad) {
-          whenImagesSettled(900).then(() => {
+          // Include detail image preloading in initial wait (both with short caps)
+          Promise.allSettled([ whenImagesSettled(900), detailPreloadPromise ]).then(() => {
             const now = (typeof performance !== 'undefined' && performance.now) ? performance.now() : Date.now();
             const elapsed = now - spinnerStart;
             const wait = Math.max(0, MIN_SPIN_MS - elapsed);
