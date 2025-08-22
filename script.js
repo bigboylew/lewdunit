@@ -1295,7 +1295,7 @@ function openWindow(title) {
 
         /* Bottom taskbar-style filter bar */
         .store-bottom-bar {
-          position: static; /* fixed in grid row */
+          position: relative; /* ensure ::before anchors to bar and z-index applies */
           height: 40px; /* slimmer bar */
           padding: 0 12px;
           display: flex;
@@ -1315,7 +1315,7 @@ function openWindow(title) {
             0 -2px 6px rgba(0,0,0,0.4);
           border-top: 1px solid rgba(255,255,255,0.15);
           backdrop-filter: blur(10px);
-          WebkitBackdropFilter: blur(10px);
+          -webkit-backdrop-filter: blur(10px);
           z-index: 5;
         }
         .store-bottom-bar::before {
@@ -1557,7 +1557,7 @@ function openWindow(title) {
             left: '0', right: '0', top: '0', bottom: '40px', /* keep bottom bar visible */
             background: 'rgba(255,255,255,0.96)',
             backdropFilter: 'blur(3px)',
-            WebkitBackdropFilter: 'blur(3px)',
+            webkitBackdropFilter: 'blur(3px)',
             zIndex: '20',
             overflow: 'auto',
             opacity: '0',

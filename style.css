@@ -91,7 +91,9 @@ body, html {
     inset 0 1px 0 rgba(255,255,255,0.3);
   color: #000;
   font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-  user-select: text;
+  user-select: none; /* avoid text caret on window chrome */
+  -webkit-user-select: none;
+  -ms-user-select: none;
   overflow: hidden;
   display: flex;
   flex-direction: column;
@@ -174,6 +176,14 @@ body, html {
   flex-grow: 1;
   font-size: 13px;
   color: #000;
+  user-select: text; /* allow selecting text in content areas */
+  -webkit-user-select: text;
+  -ms-user-select: text;
+}
+
+/* Hide caret on non-editable UI inside windows (keep it for inputs/textarea/contenteditable) */
+.window :not(input):not(textarea):not([contenteditable="true"]) {
+  caret-color: transparent;
 }
 
 /* =======================
