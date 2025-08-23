@@ -725,11 +725,15 @@ function openWindow(title) {
     content.style.padding = '0';
     content.style.overflow = 'hidden';
 
+    // Feature flag: lock the Whodunit door for now (keep open logic intact for future)
+    const WHODUNIT_LOCKED = true;
+
     // Click to open, then redirect after animation completes
     const preSaveUrl = 'https://share.amuse.io/VbMvlRPQelae'; 
     const stageEl = content.querySelector('#whodunit-stage');
     const doorEl = content.querySelector('.whodunit-door');
     const rightHalf = content.querySelector('.door-half.right');
+    const hintEl = content.querySelector('.whodunit-hint');
     let opened = false;
     function triggerOpenAndRedirect() {
       if (opened) return;
@@ -747,8 +751,18 @@ function openWindow(title) {
       };
       rightHalf.addEventListener('transitionend', handler);
     }
-    // Only clicks on the door open it
-    doorEl.addEventListener('click', triggerOpenAndRedirect, { once: true });
+    // Apply lock behavior now; preserve open logic for future
+    if (WHODUNIT_LOCKED) {
+      if (hintEl) hintEl.textContent = 'Locked';
+      if (doorEl) { doorEl.style.cursor = 'not-allowed'; doorEl.setAttribute('aria-disabled', 'true'); }
+      if (stageEl) stageEl.setAttribute('aria-label', 'Locked door');
+      // Swallow click/touch to prevent opening
+      doorEl?.addEventListener('click', (e) => { e.preventDefault(); e.stopPropagation(); }, { once: false });
+      doorEl?.addEventListener('touchend', (e) => { e.preventDefault(); e.stopPropagation(); }, { passive: false });
+    } else {
+      // Only clicks on the door open it
+      doorEl.addEventListener('click', triggerOpenAndRedirect, { once: true });
+    }
   } else if (title === "Info") {
     if (!isMobile) {
       win.style.width = '520px';
@@ -1286,6 +1300,24 @@ function openWindow(title) {
         }
         /* The <img class="product-image"> itself, no wrapper */
         .product-image { display: block; background: transparent; }
+        /* CD (p2) card hover spin on wrapper to preserve image 3D transform */
+        .product-item[data-id="p2"] .product-image-wrap {
+          transform: none;
+          transform-origin: 50% 50%;
+          transition: transform 1s ease;
+        }
+        .product-item[data-id="p2"]:hover .product-image-wrap {
+          transform: rotate(1turn);
+        }
+        /* Vinyl (p1) card hover spin on wrapper to preserve image 3D transform */
+        .product-item[data-id="p1"] .product-image-wrap {
+          transform: none;
+          transform-origin: 50% 50%;
+          transition: transform 2s ease;
+        }
+        .product-item[data-id="p1"]:hover .product-image-wrap {
+          transform: rotate(1turn);
+        }
         .product-title { font-weight: 600; margin: 6px 0 2px; }
         .product-type { font-size: 12px; color: #666; }
 
@@ -1475,8 +1507,8 @@ function openWindow(title) {
     // Build products and filtering
     (function setupStoreProducts() {
       const products = [
-        { id: 'p1', title: 'Whodunit?', type: 'vinyl', subtitle: 'Standard Black Vinyl', img: 'whodunitvinyl1.webp', images: ['whodunitvinyl1.webp','whodunitvinyl1.png'], price: 27.90 },
-        { id: 'p2', title: 'Whodunit?', type: 'cd', subtitle: 'CD', img: 'whodunitvinyl1.webp', images: ['whodunitvinyl1.webp','whodunitvinyl1.png'], price: 12.90 }
+        { id: 'p1', title: 'Whodunit?', type: 'vinyl', subtitle: 'Standard Black Vinyl', img: 'whodunitvinyldisc.webp', images: ['whodunitvinyl1.webp'], price: 27.90 },
+        { id: 'p2', title: 'Whodunit?', type: 'cd', subtitle: 'CD', img: 'whodunitcd1.png', images: ['whodunitcd2.webp','whodunitcd1.png'], price: 11.40 }
       ];
       const grid = content.querySelector('#store-products');
       const buttons = Array.from(content.querySelectorAll('.store-filter-btn'));
@@ -1607,6 +1639,8 @@ function openWindow(title) {
             .store-detail-overlay .detail-thumb:hover { box-shadow: 0 2px 10px rgba(0,0,0,0.12); transform: translateY(-1px); }
             .store-detail-overlay .detail-thumb.selected { border-color:#4da3ff; box-shadow: 0 0 0 2px rgba(77,163,255,0.25) inset; }
             .store-detail-overlay .detail-thumb img { max-width:100%; max-height:100%; object-fit:contain; display:block; }
+            /* Back button hover: lighten arrow */
+            .store-detail-overlay .detail-back:hover img { filter: brightness(1.25); }
             /* Purchase button hover */
             .store-detail-overlay .detail-buy:hover {
               background: linear-gradient(#5bb0ff,#2b82ff) !important;
@@ -1614,10 +1648,12 @@ function openWindow(title) {
               box-shadow: 0 4px 10px rgba(0,0,0,0.2);
             }
           </style>
-          <button class="detail-back" style="position:absolute;top:8px;left:8px;padding:8px 12px;border-radius:6px;border:1px solid #999;background:linear-gradient(#f8f8f8,#e6e6e6);cursor:pointer;z-index:21;">← Back</button>
+          <button class="detail-back" style="position:absolute;top:8px;left:8px;padding:2px;border:none;background:transparent;cursor:pointer;z-index:21;display:flex;align-items:center;justify-content:center;border-radius:8px;">
+            <img src="backarrow.webp" alt="Back" style="width:40px;height:auto;display:block;transition:filter .15s ease;" />
+          </button>
           <div class="detail-wrap" style="max-width: 900px; margin: 0 auto; padding: 56px 16px 16px; display: grid; grid-template-columns: 1fr 1fr; gap: 16px; align-items: start; position: relative;">
             <div>
-              <div class="detail-hero" style="position: relative; min-height: 300px; border: 1px solid #ddd; border-radius: 8px; background:#fff; display:flex; align-items:center; justify-content:center; overflow:hidden;">
+              <div class="detail-hero" style="position: relative; min-height: 300px; border: 1px solid #ddd; border-radius: 8px; background:#fff; display:flex; align-items:center; justify-content:center; padding: 4%; overflow:hidden;">
                 ${heroImgSrc ? `<img class="detail-hero-img imgA" src="${heroImgSrc}" alt="${product.title}" />` : ''}
                 <img class="detail-hero-img imgB" alt="${product.title}" aria-hidden="true" style="opacity:0;" />
               </div>
@@ -1632,7 +1668,7 @@ function openWindow(title) {
               </div>
               <div class="detail-desc" style="background:#fff;border:1px solid #ddd;border-radius:8px;padding:14px; color:#333; line-height:1.5; font-size:14px;">
                 <div style="font-weight:700; margin-bottom:6px;">Description</div>
-                <div>'Whodunit?' on black vinyl. Includes 2 bonus tracks. Mixes and tracklist order differs slightly from digital/final version.</div>
+                <div>'Whodunit?' on black vinyl. Includes 3 bonus tracks.</div>
               </div>
             </div>
           </div>
@@ -1679,17 +1715,24 @@ function openWindow(title) {
 
         // Build gallery thumbnails using known product images (below the hero)
         if (galleryEl) {
-          const galleryImages = [
-            heroImgSrc,
-            'whodunitproducts/whodunitvinyl1.jpg',
-            'whodunitproducts/whodunitvinyl2.jpg',
-            'whodunitproducts/whodunitvinyl3.jpg',
-            'whodunitproducts/whodunitvinyl4.jpg',
-            'whodunitproducts/whodunit.gif'
-          ].filter(Boolean);
+          // For Vinyl (p1), include the full, curated gallery.
+          // For CD (p2), use all images provided on the product so the second image (whodunitcd1.png) appears.
+          const galleryImages = (product && product.id === 'p1')
+            ? [
+                heroImgSrc,
+                'whodunitproducts/whodunitvinyl1.jpg',
+                'whodunitproducts/whodunitvinyl2.jpg',
+                'whodunitproducts/whodunitvinyl3.jpg',
+                'whodunitproducts/whodunitvinyl4.jpg',
+                'whodunitproducts/whodunit.gif'
+              ].filter(Boolean)
+            : (product && product.id === 'p2')
+              ? images.filter(Boolean)
+              : [heroImgSrc].filter(Boolean);
 
           // Helper to apply sizing to a specific element:
-          // index 0 = contain; others = cover; GIFs fill height (height:100%, width:auto).
+          // Default: index 0 = contain; others = cover; GIFs fill height (height:100%, width:auto).
+          // For CD (p2): force contain for all indices so every image fits inside the hero box.
           function applyHeroFitTo(el, index, src) {
             if (!el) return;
             const isGif = (src || '').toLowerCase().endsWith('.gif');
@@ -1715,7 +1758,8 @@ function openWindow(title) {
               el.style.transform = 'none';
             } else {
               // Reset to fill box and remove centering transform
-              el.style.objectFit = 'cover';
+              const wantContain = (product && product.id === 'p2');
+              el.style.objectFit = wantContain ? 'contain' : 'cover';
               el.style.width = '100%';
               el.style.height = '100%';
               el.style.left = '0';
@@ -1925,7 +1969,7 @@ function openWindow(title) {
               imgEl.style.margin = '0';
               imgEl.style.zIndex = '1';
               // Ensure a base shadow is visible even before any hover/animation occurs
-              imgEl.style.filter = 'drop-shadow(0px 0px 18px rgba(0,0,0,0.18))';
+              imgEl.style.filter = 'drop-shadow(0px 0px 18px rgba(0,0,0,0.25))';
             }
 
             // Create a specular highlight overlay for more realistic 3D lighting
@@ -3190,11 +3234,15 @@ function openWindow(title) {
     content.style.padding = '0';
     content.style.overflow = 'hidden';
 
+    // Feature flag: lock the Whodunit door for now (keep open logic intact for future)
+    const WHODUNIT_LOCKED = true;
+
     // Click to open, then redirect after animation completes
     const preSaveUrl = 'https://share.amuse.io/VbMvlRPQelae'; 
     const stageEl = content.querySelector('#whodunit-stage');
     const doorEl = content.querySelector('.whodunit-door');
     const rightHalf = content.querySelector('.door-half.right');
+    const hintEl = content.querySelector('.whodunit-hint');
     let opened = false;
     function triggerOpenAndRedirect() {
       if (opened) return;
@@ -3217,9 +3265,19 @@ function openWindow(title) {
       };
       rightHalf.addEventListener('transitionend', handler);
     }
-    // Click and touch to open (ensure mobile reliability)
-    doorEl.addEventListener('click', triggerOpenAndRedirect, { once: true });
-    doorEl.addEventListener('touchend', (e) => { e.preventDefault(); triggerOpenAndRedirect(); }, { once: true });
+    // Apply lock behavior now; preserve open logic for future
+    if (WHODUNIT_LOCKED) {
+      if (hintEl) hintEl.textContent = 'Locked';
+      if (doorEl) { doorEl.style.cursor = 'not-allowed'; doorEl.setAttribute('aria-disabled', 'true'); }
+      if (stageEl) stageEl.setAttribute('aria-label', 'Locked door');
+      // Swallow click/touch to prevent opening
+      doorEl?.addEventListener('click', (e) => { e.preventDefault(); e.stopPropagation(); });
+      doorEl?.addEventListener('touchend', (e) => { e.preventDefault(); e.stopPropagation(); }, { passive: false });
+    } else {
+      // Click and touch to open (ensure mobile reliability)
+      doorEl.addEventListener('click', triggerOpenAndRedirect, { once: true });
+      doorEl.addEventListener('touchend', (e) => { e.preventDefault(); triggerOpenAndRedirect(); }, { once: true });
+    }
   } else {
     content.innerHTML = `<p>This is the ${title} window.</p>`;
   }

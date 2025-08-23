@@ -620,6 +620,27 @@ body, #start-menu, .window {
   100% { opacity: 0; }
 }
 
+/* Mobile disclaimer above login profile (hidden by default) */
+.mobile-disclaimer {
+  display: none;
+  max-width: 90vw;
+  margin: 0 16px 12px;
+  padding: 10px 12px;
+  text-align: center;
+  background: rgba(0, 0, 0, 0.4);
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  border-radius: 8px;
+  font-size: 13px;
+  line-height: 1.4;
+  text-shadow: 0 1px 2px rgba(0,0,0,0.5);
+  box-shadow: 0 2px 6px rgba(0,0,0,0.25);
+}
+
+/* Show disclaimer on mobile after load */
+@media (max-width: 768px) {
+  body.loaded .mobile-disclaimer { display: block; }
+}
+
 /* Hide login content initially */
 body.loading .login-box,
 body.loading .login-footer {
