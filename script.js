@@ -174,102 +174,243 @@ function openWindow(title) {
   win.dataset.title = title;
 
   if (title === "Music") {
-    // Make this window larger to accommodate the grid (responsive on mobile)
+    // Set window size to match USB Loader GX aspect ratio
     if (isMobile) {
-      win.style.width = '82vw';
-      win.style.height = '68vh';
-      win.style.maxWidth = '';
-      win.style.maxHeight = '';
+      win.style.width = '95vw';
+      win.style.height = 'calc(95vw * 0.75)'; // 4:3 aspect ratio
+      win.style.maxWidth = '900px';
+      win.style.maxHeight = '675px';
     } else {
       win.style.width = '900px';
-      win.style.height = '600px';
+      win.style.height = '675px'; // 4:3 aspect ratio
       win.style.maxWidth = 'none';
       win.style.maxHeight = 'none';
     }
 
-    // Prevent outer scrollbars; we'll scroll only the products grid
+    // Remove window chrome for a cleaner look
+    win.style.border = 'none';
+    win.style.borderRadius = '0';
+    win.style.boxShadow = 'none';
     win.style.overflow = 'hidden';
     content.style.overflow = 'hidden';
+    content.style.padding = '0';
+    content.style.background = '#000';
 
     content.innerHTML = `
       <style>
-        .music-container {
-          padding: 20px;
+        @import url('https://fonts.cdnfonts.com/css/nokiafc22');
+        
+        .usb-loader {
+          width: 100%;
+          height: 100%;
+          display: flex;
+          flex-direction: column;
+          background: #000000;
+          color: #fff;
+          font-family: 'Arial', sans-serif;
           position: relative;
-          font-family: inherit;
+          overflow: hidden;
         }
-        .music-sections {
-          display: grid;
-          grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
-          gap: 24px;
-          max-width: 900px;
-          margin: 0 auto;
+        
+        .carousel-container {
+          flex: 1;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          position: relative;
+          overflow: hidden;
+          padding: 20px 0 40px 0;
+          background: linear-gradient(to bottom, #1a1a1a 0%, #000000 100%);
         }
-        .music-section {
-          background: transparent;
-          padding: 8px 0;
-          text-align: center;
-          transition: transform 0.2s ease;
+        
+        .carousel-track {
+          display: flex;
+          transition: transform 0.5s ease;
+          height: 100%;
+          align-items: center;
+        }
+        
+        .carousel-item {
+          min-width: 180px;
+          height: 240px;
+          margin: 0 8px;
+          transition: all 0.3s ease;
           cursor: pointer;
-          border: none;
+          position: relative;
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          justify-content: flex-start;
+          opacity: 0.5;
+          transform: scale(0.85);
+          border-radius: 6px;
+          overflow: hidden;
+          background: #1a1a1a;
+          border: 2px solid #333;
+          box-shadow: 0 0 15px rgba(0, 0, 0, 0.8);
         }
-        .music-section:hover { transform: translateY(-2px); }
-        .music-section:hover .music-icon { filter: drop-shadow(0 0 10px rgba(51,153,255,0.9)); }
-        .music-section:hover .music-title { color: #3399ff; text-shadow: 0 0 6px rgba(51,153,255,0.6); }
-        .music-icon {
-          width: 120px; height: 120px; margin: 0 auto 16px auto; display: block;
-          filter: drop-shadow(0 2px 4px rgba(0,0,0,0.2));
+        
+        .carousel-item.active {
+          opacity: 1;
+          transform: scale(1);
+          z-index: 2;
+          border-color: #4a90e2;
+          box-shadow: 0 0 25px rgba(74, 144, 226, 0.6);
+        }
+        
+        .carousel-item img {
+          width: 100%;
+          height: 180px;
           object-fit: cover;
+          border-bottom: 2px solid #333;
         }
-        .music-title { font-size: 20px; font-weight: bold; margin-bottom: 8px; color: #333; }
-        .music-section-content {}
-        .music-section-header { display: flex; align-items: center; gap: 15px; padding: 0 20px; margin-bottom: 20px; }
-        .music-back-button {
-          background: linear-gradient(to bottom, #e8e8e8, #d0d0d0);
-          border: 1px solid #999; color: #333; padding: 8px 12px; border-radius: 4px;
-          cursor: pointer; font-size: 12px; transition: background 0.2s ease;
+        
+        .carousel-item .title {
+          padding: 10px 5px;
+          text-align: center;
+          font-size: 14px;
+          font-family: 'NokiaFC22', Arial, sans-serif;
+          font-weight: normal;
+          color: #fff;
+          text-shadow: 0 0 5px rgba(0, 0, 0, 0.8);
+          width: 100%;
+          box-sizing: border-box;
+          background: #222;
+          white-space: nowrap;
+          overflow: hidden;
+          text-overflow: ellipsis;
         }
-        .music-back-button:hover { background: linear-gradient(to bottom, #f0f0f0, #e0e0e0); }
-        #music-section-title { margin: 0; color: #333; font-size: 24px; }
-        #music-section-body { color: #333; line-height: 1.6; padding: 0 20px; }
-        .release-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 20px; margin-top: 20px; }
-        .release-item { background: white; border: 1px solid #ddd; border-radius: 8px; padding: 15px; text-align: center; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
-        .release-cover { width: 100%; height: 150px; background: #f5f5f5; border-radius: 4px; margin-bottom: 10px; display:flex; align-items:center; justify-content:center; overflow:hidden; }
-        .release-cover img { max-width: 100%; max-height: 100%; display:block; }
-        .release-actions { display:flex; gap:8px; justify-content:center; margin-top:8px; }
-        .release-actions a { font-size:12px; color:#0366d6; text-decoration:none; }
+        
+        .carousel-nav {
+          position: absolute;
+          top: 50%;
+          transform: translateY(-50%);
+          width: 50px;
+          height: 100px;
+          background: rgba(0, 0, 0, 0.5);
+          border: none;
+          color: white;
+          font-size: 32px;
+          cursor: pointer;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          z-index: 10;
+          transition: all 0.2s;
+          opacity: 0.7;
+          padding: 0;
+          margin: 0;
+        }
+        
+        .carousel-nav:hover {
+          background: rgba(255, 255, 255, 0.1);
+          opacity: 1;
+        }
+        
+        .carousel-nav.prev {
+          left: 0;
+          background: linear-gradient(90deg, rgba(0,0,0,0.7) 0%, rgba(0,0,0,0) 100%) !important;
+        }
+        
+        .carousel-nav.next {
+          right: 0;
+          background: linear-gradient(270deg, rgba(0,0,0,0.7) 0%, rgba(0,0,0,0) 100%) !important;
+        }
+        
+        .carousel-dots {
+          position: absolute;
+          bottom: 10px;
+          left: 0;
+          right: 0;
+          display: flex;
+          justify-content: center;
+          gap: 6px;
+          z-index: 10;
+          padding: 5px 0;
+          background: rgba(0, 0, 0, 0.5);
+        }
+        
+        .carousel-dot {
+          width: 8px;
+          height: 8px;
+          border-radius: 50%;
+          background: rgba(255, 255, 255, 0.2);
+          border: none;
+          cursor: pointer;
+          padding: 0;
+          transition: all 0.2s;
+        }
+        
+        .carousel-dot.active {
+          background: #4a90e2;
+          transform: scale(1.3);
+        }
+        
+        .music-details {
+          padding: 10px 20px;
+          background: #0a0a0a;
+          border-top: 1px solid #333;
+          text-align: left;
+          min-height: 60px;
+          display: flex;
+          flex-direction: column;
+          justify-content: center;
+        }
+        
+        .music-details h2 {
+          margin: 0;
+          color: #4a90e2;
+          font-size: 18px;
+          font-family: 'NokiaFC22', Arial, sans-serif;
+          font-weight: normal;
+          letter-spacing: 0.5px;
+        }
+        
+        .music-details p {
+          margin: 2px 0 0 0;
+          color: #888;
+          font-size: 13px;
+          font-family: Arial, sans-serif;
+        }
+        
+        .play-button {
+          position: absolute;
+          bottom: 10px;
+          right: 20px;
+          padding: 8px 20px;
+          background: #4a90e2;
+          color: white;
+          border: none;
+          border-radius: 3px;
+          font-size: 14px;
+          font-family: 'NokiaFC22', Arial, sans-serif;
+          cursor: pointer;
+          transition: all 0.2s;
+          text-transform: uppercase;
+          letter-spacing: 1px;
+        }
+        
+        .play-button:hover {
+          background: #5a9ff2;
+        }
       </style>
 
-      <div class="music-container">
-        <div class="music-sections" id="music-main-sections">
-          <div class="music-section" onclick="openWindow('demodisc_01')">
-            <img src="demodisccover.webp" alt="demodisc_01" class="music-icon" />
-            <div class="music-title">demodisc_01</div>
+      <div class="usb-loader">
+        <div class="carousel-container">
+          <button class="carousel-nav prev">‹</button>
+          <div class="carousel-track" id="carousel-track">
+            <!-- Items will be dynamically added here -->
           </div>
-          <div class="music-section" onclick="openMusicSection('apple')">
-            <img src="applecover.webp" alt="apple" class="music-icon" />
-            <div class="music-title">apple</div>
-          </div>
-          <div class="music-section" onclick="openWindow('GOODTRIP')">
-            <img src="goodtrip.webp" alt="GOODTRIP" class="music-icon" />
-            <div class="music-title">GOODTRIP</div>
-          </div>
-          <div class="music-section" onclick="openMusicSection('iso')">
-            <img src="isocover.webp" alt="iso" class="music-icon" />
-            <div class="music-title">iso</div>
-          </div>
-          <div class="music-section" onclick="openMusicSection('ipod')">
-            <img src="cdicon.gif" alt="iPod Player" class="music-icon" />
-            <div class="music-title">iPod Player</div>
+          <button class="carousel-nav next">›</button>
+          <div class="carousel-dots" id="carousel-dots">
+            <!-- Dots will be dynamically added here -->
           </div>
         </div>
-
-        <div class="music-section-content" id="music-section-content" style="display:none;">
-          <div class="music-section-header">
-            <button class="music-back-button" onclick="showMainMusic()">← Back to Music</button>
-            <h2 id="music-section-title"></h2>
-          </div>
-          <div id="music-section-body"></div>
+        
+        <div class="music-details">
+          <h2 id="current-title">Select a release</h2>
+          <p id="current-description">Browse through the collection using the navigation buttons</p>
+          <button class="play-button" id="play-button">PLAY</button>
         </div>
       </div>
     `;
@@ -373,6 +514,150 @@ function openWindow(title) {
       }
     }
 
+    // Initialize the carousel
+    const carouselTrack = content.querySelector('#carousel-track');
+    const dotsContainer = content.querySelector('#carousel-dots');
+    const prevButton = content.querySelector('.prev');
+    const nextButton = content.querySelector('.next');
+    const playButton = content.querySelector('#play-button');
+    const currentTitle = content.querySelector('#current-title');
+    const currentDesc = content.querySelector('#current-description');
+
+    const releases = [
+      {
+        id: 'demodisc_01',
+        title: 'demodisc_01',
+        image: 'demodisccover.webp',
+        description: 'A collection of experimental tracks',
+        action: () => openWindow('demodisc_01')
+      },
+      {
+        id: 'apple',
+        title: 'apple',
+        image: 'applecover.webp',
+        description: 'Fresh sounds from the orchard',
+        action: () => openMusicSection('apple')
+      },
+      {
+        id: 'GOODTRIP',
+        title: 'GOODTRIP',
+        image: 'goodtrip.webp',
+        description: 'A journey through sound',
+        action: () => openWindow('GOODTRIP')
+      },
+      {
+        id: 'iso',
+        title: 'iso',
+        image: 'isocover.webp',
+        description: 'Isolated sounds and beats',
+        action: () => openMusicSection('iso')
+      },
+      {
+        id: 'ipod',
+        title: 'iPod Player',
+        image: 'cdicon.gif',
+        description: 'Your personal music player',
+        action: () => openMusicSection('ipod')
+      }
+    ];
+
+    let currentIndex = 0;
+
+    // Create carousel items
+    function createCarousel() {
+      carouselTrack.innerHTML = '';
+      dotsContainer.innerHTML = '';
+      
+      releases.forEach((release, index) => {
+        // Create carousel item
+        const item = document.createElement('div');
+        item.className = 'carousel-item' + (index === 0 ? ' active' : '');
+        item.innerHTML = `
+          <img src="${release.image}" alt="${release.title}" />
+          <div class="title">${release.title}</div>
+        `;
+        item.addEventListener('click', () => selectItem(index));
+        carouselTrack.appendChild(item);
+        
+        // Create dot
+        const dot = document.createElement('button');
+        dot.className = 'carousel-dot' + (index === 0 ? ' active' : '');
+        dot.addEventListener('click', () => selectItem(index));
+        dotsContainer.appendChild(dot);
+      });
+      
+      updateDetails();
+    }
+    
+    function selectItem(index) {
+      currentIndex = (index + releases.length) % releases.length;
+      updateCarousel();
+      updateDetails();
+    }
+    
+    function updateCarousel() {
+      const items = carouselTrack.querySelectorAll('.carousel-item');
+      const dots = dotsContainer.querySelectorAll('.carousel-dot');
+      
+      items.forEach((item, index) => {
+        item.classList.toggle('active', index === currentIndex);
+      });
+      
+      dots.forEach((dot, index) => {
+        dot.classList.toggle('active', index === currentIndex);
+      });
+      
+      // Center the active item
+      const activeItem = items[currentIndex];
+      if (activeItem) {
+        const containerWidth = carouselTrack.parentElement.offsetWidth;
+        const itemWidth = activeItem.offsetWidth;
+        const scrollLeft = activeItem.offsetLeft - (containerWidth / 2) + (itemWidth / 2);
+        carouselTrack.style.transform = `translateX(-${scrollLeft - activeItem.offsetLeft + 15}px)`;
+      }
+    }
+    
+    function updateDetails() {
+      const release = releases[currentIndex];
+      currentTitle.textContent = release.title;
+      currentDesc.textContent = release.description;
+    }
+    
+    // Event listeners
+    prevButton.addEventListener('click', () => {
+      currentIndex = (currentIndex - 1 + releases.length) % releases.length;
+      updateCarousel();
+      updateDetails();
+    });
+    
+    nextButton.addEventListener('click', () => {
+      currentIndex = (currentIndex + 1) % releases.length;
+      updateCarousel();
+      updateDetails();
+    });
+    
+    playButton.addEventListener('click', () => {
+      releases[currentIndex].action();
+    });
+    
+    // Keyboard navigation
+    content.addEventListener('keydown', (e) => {
+      if (e.key === 'ArrowLeft') {
+        currentIndex = (currentIndex - 1 + releases.length) % releases.length;
+        updateCarousel();
+        updateDetails();
+      } else if (e.key === 'ArrowRight') {
+        currentIndex = (currentIndex + 1) % releases.length;
+        updateCarousel();
+        updateDetails();
+      } else if (e.key === 'Enter') {
+        releases[currentIndex].action();
+      }
+    });
+    
+    // Initialize the carousel
+    createCarousel();
+    
     // Expose handlers for inline onclick inside this window scope
     window.openMusicSection = openMusicSection;
     window.showMainMusic = showMainMusic;
