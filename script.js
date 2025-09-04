@@ -39,6 +39,106 @@ function installAudioUnlockOnce() {
 }
 installAudioUnlockOnce();
 
+// =======================
+// Global 3D Music Player Controller
+// =======================
+let __musicPlayerInit = false;
+let playerAudio = null;
+const playerState = { playlist: [], index: 0, meta: { artist: '', cover: '' } };
+
+function initMusicPlayerUI() {
+  if (__musicPlayerInit) return;
+  __musicPlayerInit = true;
+  playerAudio = new Audio();
+  playerAudio.preload = 'metadata';
+
+  const root = document.getElementById('music-player');
+  if (!root) { console.warn('Music player root not found'); return; }
+  const art = root.querySelector('#player-album-art');
+  const art3d = root.querySelector('.album-art-3d');
+  const nowPlaying = root.querySelector('#now-playing');
+  const artistName = root.querySelector('#artist-name');
+  const progressBar = root.querySelector('.progress-bar');
+  const progress = root.querySelector('.progress');
+  const curTimeEl = root.querySelector('.current-time');
+  const durTimeEl = root.querySelector('.duration');
+  const btnPrev = root.querySelector('#prev-btn');
+  const btnPlay = root.querySelector('#play-btn');
+  const btnNext = root.querySelector('#next-btn');
+  const vol = root.querySelector('#volume-slider');
+  const btnClose = root.querySelector('#close-player');
+
+  function fmt(s){ s=Math.max(0,Math.floor(s||0)); const m=Math.floor(s/60), ss=s%60; return `${m}:${ss<10?'0':''}${ss}`; }
+
+  function reflectBtn() { if (!playerAudio) return; btnPlay.textContent = playerAudio.paused ? '▶' : '⏸'; }
+  function flipArt() { if (!art3d) return; art3d.classList.add('flipping'); setTimeout(()=>art3d.classList.remove('flipping'), 900); }
+  function updateMeta() {
+    const t = playerState.playlist[playerState.index]; if (!t) return;
+    nowPlaying.textContent = t.title || '—'; artistName.textContent = t.artist || playerState.meta.artist || '';
+    art.src = t.cover || playerState.meta.cover || '';
+  }
+  function load(i) {
+    if (!playerState.playlist.length) return;
+    playerState.index = (i + playerState.playlist.length) % playerState.playlist.length;
+    const t = playerState.playlist[playerState.index]; if (!t) return;
+    playerAudio.src = t.src; playerAudio.currentTime = 0; playerAudio.load(); updateMeta(); flipArt();
+  }
+  function play() {
+    if (!playerAudio.src && playerState.playlist.length) load(playerState.index);
+    reflectBtn(); fadeOutAudiosIn(document.body, 500).then(()=>{ playerAudio.play().then(reflectBtn).catch(()=>{}); });
+  }
+  function pause() { try { playerAudio.pause(); } catch {} reflectBtn(); }
+  function next() { load(playerState.index + 1); play(); }
+  function prev() { load(playerState.index - 1); play(); }
+
+  btnPlay.addEventListener('click', () => { if (playerAudio.paused) play(); else pause(); });
+  btnNext.addEventListener('click', next);
+  btnPrev.addEventListener('click', prev);
+  progressBar.addEventListener('click', (e)=>{ const r = progressBar.getBoundingClientRect(); const p = Math.min(1, Math.max(0, (e.clientX - r.left)/r.width)); const d = Math.max(0, playerAudio.duration||0); playerAudio.currentTime = p * d; });
+  if (vol) { try { playerAudio.volume = Number(vol.value || 0.7); } catch {} vol.addEventListener('input', ()=>{ try { playerAudio.volume = Number(vol.value || 0.7); } catch {} }); }
+  btnClose.addEventListener('click', ()=>{ root.classList.remove('active'); pause(); });
+
+  playerAudio.addEventListener('play', reflectBtn);
+  playerAudio.addEventListener('pause', reflectBtn);
+  playerAudio.addEventListener('ended', next);
+  playerAudio.addEventListener('loadedmetadata', ()=>{ durTimeEl.textContent = fmt(playerAudio.duration||0); });
+  playerAudio.addEventListener('timeupdate', ()=>{ curTimeEl.textContent = fmt(playerAudio.currentTime||0); const d = Math.max(0.001, playerAudio.duration||0); const p = Math.min(1, (playerAudio.currentTime||0)/d); progress.style.width = (p*100).toFixed(2)+'%'; });
+
+  root.__player = { load, play, pause, next, prev };
+}
+
+function showMusicPlayer(fromImgEl) {
+  initMusicPlayerUI(); const root = document.getElementById('music-player'); if (!root) return;
+  if (fromImgEl && fromImgEl.getBoundingClientRect) {
+    try { const rect = fromImgEl.getBoundingClientRect(); const clone = fromImgEl.cloneNode(true); clone.className='player-fly-clone'; clone.style.left=rect.left+'px'; clone.style.top=rect.top+'px'; clone.style.width=rect.width+'px'; clone.style.height=rect.height+'px'; document.body.appendChild(clone); const target = root.getBoundingClientRect(); const tx=(target.left+20)-rect.left; const ty=(target.top+20)-rect.top; clone.animate([{transform:'translate(0,0) scale(1)',opacity:1},{transform:`translate(${tx}px, ${ty}px) scale(0.35)`,opacity:0.3}],{duration:500,easing:'cubic-bezier(0.175, 0.885, 0.32, 1.275)'}).addEventListener('finish',()=>{clone.remove();}); } catch {}
+  }
+  root.classList.add('active');
+}
+
+function setMusicPlaylist(playlist, meta={}) {
+  initMusicPlayerUI(); playerState.playlist = (playlist||[]).filter(t=>t&&t.src); playerState.index=0; playerState.meta = { artist: meta.artist||'', cover: meta.cover||'' };
+  const root = document.getElementById('music-player'); const vol = root && root.querySelector('#volume-slider'); if (vol) { try { playerAudio.volume = Number(vol.value||0.7); } catch {} }
+  const t0 = playerState.playlist[0]; if (t0) { const art=root.querySelector('#player-album-art'); const nowPlaying=root.querySelector('#now-playing'); const artistName=root.querySelector('#artist-name'); art.src=t0.cover||playerState.meta.cover||''; nowPlaying.textContent=t0.title||'—'; artistName.textContent=t0.artist||playerState.meta.artist||''; }
+}
+
+function open3DPlayerForRelease(release, fromImgEl) {
+  try { initMusicPlayerUI(); } catch {}
+  let playlist = []; let meta = {};
+  try { if (release && release.id && typeof albumConfigs !== 'undefined' && albumConfigs[release.id]) { const cfg = albumConfigs[release.id]; meta = { artist: cfg.title || release.title || '', cover: cfg.albumCover || release.image || '' }; playlist = (cfg.playlist||[]).map((p,i)=>({ title: p.title || `Track ${i+1}`, artist: cfg.title || '', src: p.src, cover: cfg.albumCover })); } } catch {}
+  if (!playlist.length && release && release.id === 'demodisc_01') {
+    meta = { artist: 'demodisc_01', cover: 'demodisccover-hq.png' };
+    playlist = [
+      { title: 'crackers', artist: 'lewd', src: 'crackers.mp3', cover: meta.cover },
+      { title: 'puzzle', artist: 'lewd', src: 'puzzle.mp3', cover: meta.cover },
+      { title: 'meadowtronic', artist: 'lewd', src: 'meadowtronic.mp3', cover: meta.cover },
+      { title: 'slideshow', artist: 'lewd', src: 'slideshow.mp3', cover: meta.cover },
+      { title: 'goldentime', artist: 'lewd', src: 'goldentime.mp3', cover: meta.cover },
+    ].filter(t=>!!t.src);
+  }
+  if (!playlist.length && release) { meta = { artist: release.title || '', cover: release.image || '' }; }
+  setMusicPlaylist(playlist, meta); showMusicPlayer(fromImgEl); const root = document.getElementById('music-player'); const btn = root && root.querySelector('#play-btn'); if (btn) btn.click();
+}
+
 // Fade out all <audio> elements inside a container before pausing them
 function fadeOutAudiosIn(container, duration = 800) {
   try {
@@ -205,7 +305,7 @@ function openWindow(title) {
           height: 100%;
           display: flex;
           flex-direction: column;
-          background: #000000;
+          background: linear-gradient(to bottom, #1b1b1b, #000000);
           color: #fff;
           font-family: 'Arial', sans-serif;
           position: relative;
@@ -220,7 +320,8 @@ function openWindow(title) {
           position: relative;
           overflow: hidden;
           padding: 20px 0 40px 0;
-          background: linear-gradient(to bottom, #1a1a1a 0%, #000000 100%);
+          background: linear-gradient(to bottom, rgba(255,255,255,0.06), rgba(0,0,0,0.0));
+          perspective: 1200px;
         }
         
         .carousel-track {
@@ -228,13 +329,14 @@ function openWindow(title) {
           transition: transform 0.5s ease;
           height: 100%;
           align-items: center;
+          transform-style: preserve-3d;
         }
         
         .carousel-item {
-          min-width: 180px;
-          height: 240px;
+          min-width: 200px;
+          height: 280px;
           margin: 0 8px;
-          transition: all 0.3s ease;
+          transition: all 0.28s ease;
           cursor: pointer;
           position: relative;
           display: flex;
@@ -242,27 +344,28 @@ function openWindow(title) {
           align-items: center;
           justify-content: flex-start;
           opacity: 0.5;
-          transform: scale(0.85);
+          transform: translateZ(-200px) rotateY(-25deg) scale(0.82);
           border-radius: 6px;
           overflow: hidden;
-          background: #1a1a1a;
-          border: 2px solid #333;
-          box-shadow: 0 0 15px rgba(0, 0, 0, 0.8);
+          background: #111;
+          border: 2px solid #222;
+          box-shadow: 0 10px 20px rgba(0, 0, 0, 0.65);
         }
         
         .carousel-item.active {
           opacity: 1;
-          transform: scale(1);
+          transform: translateZ(0) rotateY(0deg) scale(1);
           z-index: 2;
-          border-color: #4a90e2;
-          box-shadow: 0 0 25px rgba(74, 144, 226, 0.6);
+          border-color: rgba(255,255,255,0.22);
+          box-shadow: 0 20px 40px rgba(0, 0, 0, 0.75);
         }
         
         .carousel-item img {
           width: 100%;
-          height: 180px;
+          height: 210px;
           object-fit: cover;
           border-bottom: 2px solid #333;
+          box-shadow: inset 0 -10px 20px rgba(0,0,0,0.35);
         }
         
         .carousel-item .title {
@@ -279,6 +382,18 @@ function openWindow(title) {
           white-space: nowrap;
           overflow: hidden;
           text-overflow: ellipsis;
+        }
+
+        /* Reflections */
+        .reflection {
+          content: '';
+          position: absolute;
+          top: 210px;
+          width: 100%;
+          height: 60px;
+          background: linear-gradient(to bottom, rgba(255,255,255,0.25), rgba(255,255,255,0));
+          filter: blur(2px);
+          opacity: 0.18;
         }
         
         .carousel-nav {
@@ -348,7 +463,7 @@ function openWindow(title) {
         
         .music-details {
           padding: 10px 20px;
-          background: #0a0a0a;
+          background: linear-gradient(to bottom, #0a0a0a, #000);
           border-top: 1px solid #333;
           text-align: left;
           min-height: 60px;
@@ -393,6 +508,46 @@ function openWindow(title) {
         .play-button:hover {
           background: #5a9ff2;
         }
+
+        /* In-window 3D player (not fixed; sits inside window) */
+        .window-player {
+          position: absolute;
+          left: 20px;
+          right: 20px;
+          bottom: 10px;
+          height: 180px;
+          background: rgba(255,255,255,0.88);
+          -webkit-backdrop-filter: blur(6px);
+          backdrop-filter: blur(6px);
+          border-radius: 10px;
+          box-shadow: 0 10px 30px rgba(0,0,0,0.45);
+          color: #111;
+          display: none;
+        }
+        .window-player.active { display: flex; }
+        .window-player .music-player-container { width: 100%; height: 100%; padding: 12px; display: flex; gap: 14px; align-items: center; box-sizing: border-box; }
+        .window-player .album-art-3d { width: 120px; height: 120px; position: relative; transform-style: preserve-3d; transform: rotateY(14deg) rotateX(8deg); transition: transform 420ms ease; }
+        .window-player:hover .album-art-3d { transform: rotateY(24deg) rotateX(10deg); }
+        .window-player .album-art-front, .window-player .album-art-back, .window-player .album-art-side { position: absolute; width: 100%; height: 100%; backface-visibility: hidden; border-radius: 6px; box-shadow: 0 5px 14px rgba(0,0,0,0.25); }
+        .window-player .album-art-front { transform: translateZ(12px); background:#eaeaea; overflow: hidden; }
+        .window-player .album-art-front img { width:100%; height:100%; object-fit:cover; display:block; }
+        .window-player .album-art-back { transform: translateZ(-12px) rotateY(180deg); background:#dcdcdc; }
+        .window-player .album-art-side { width: 24px; background:#cfcfcf; transform: rotateY(90deg) translateZ(74px); left:50%; margin-left:-12px; border-radius:4px; }
+        .window-player .player-controls { flex:1; display:flex; flex-direction:column; gap:8px; min-width:0; }
+        .window-player .track-info h3 { margin:0; font-size:16px; color:#222; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+        .window-player .track-info p { margin:2px 0 0; font-size:12px; color:#666; }
+        .window-player .progress-bar { width:100%; height:6px; background:#e6e6e6; border-radius:4px; cursor:pointer; overflow:hidden; }
+        .window-player .progress { width:0%; height:100%; background:#4a90e2; transition: width 100ms linear; }
+        .window-player .time-info { display:flex; justify-content:space-between; font-size:11px; color:#7b7b7b; margin-top:4px; }
+        .window-player .control-buttons { display:flex; justify-content:center; gap:14px; }
+        .window-player .control-btn { background:none; border:none; font-size:20px; cursor:pointer; color:#222; width:36px; height:36px; border-radius:50%; display:flex; align-items:center; justify-content:center; transition: transform 140ms ease, background 140ms ease; }
+        .window-player .control-btn:hover { background: rgba(0,0,0,0.06); transform: scale(1.06); }
+        .window-player .play-btn { background:#4a90e2; color:#fff; width:46px; height:46px; font-size:22px; }
+        .window-player .play-btn:hover { background:#3a7bc8; }
+        .window-player .volume-control { display:flex; align-items:center; gap:10px; }
+        .window-player .volume-icon { font-size:14px; color:#666; }
+        .window-player #window-volume { flex:1; height:4px; -webkit-appearance:none; appearance:none; background:#e0e0e0; border-radius:2px; outline:none; }
+        .window-player #window-volume::-webkit-slider-thumb { -webkit-appearance:none; width:12px; height:12px; background:#4a90e2; border-radius:50%; cursor:pointer; }
       </style>
 
       <div class="usb-loader">
@@ -411,6 +566,43 @@ function openWindow(title) {
           <h2 id="current-title">Select a release</h2>
           <p id="current-description">Browse through the collection using the navigation buttons</p>
           <button class="play-button" id="play-button">PLAY</button>
+        </div>
+
+        <!-- In-window player dock -->
+        <div class="window-player" id="window-player">
+          <div class="music-player-container">
+            <div class="album-art-3d">
+              <div class="album-art-front">
+                <img src="" alt="Album Art" id="window-player-art">
+              </div>
+              <div class="album-art-back"></div>
+              <div class="album-art-side"></div>
+            </div>
+            <div class="player-controls">
+              <div class="track-info">
+                <h3 id="window-now">Select a track</h3>
+                <p id="window-artist">Artist</p>
+              </div>
+              <div class="progress-container">
+                <div class="progress-bar" id="window-progress">
+                  <div class="progress" id="window-progress-fill"></div>
+                </div>
+                <div class="time-info">
+                  <span class="current-time" id="window-cur">0:00</span>
+                  <span class="duration" id="window-dur">0:00</span>
+                </div>
+              </div>
+              <div class="control-buttons">
+                <button class="control-btn" id="window-prev">⏮</button>
+                <button class="control-btn play-btn" id="window-play">▶</button>
+                <button class="control-btn" id="window-next">⏭</button>
+              </div>
+              <div class="volume-control">
+                <span class="volume-icon">🔊</span>
+                <input type="range" id="window-volume" min="0" max="1" step="0.1" value="0.7">
+              </div>
+            </div>
+          </div>
         </div>
       </div>
     `;
@@ -477,40 +669,6 @@ function openWindow(title) {
               <div>iso</div>
             </div>
           </div>`;
-      } else if (key === 'ipod') {
-        titleEl.textContent = 'iPod Player';
-        bodyEl.innerHTML = `
-          <div class="ipod-wrap">
-            <div class="ipod">
-              <div class="ipod-screen">
-                <div class="ipod-status"><span>Now Playing</span><span id="ipod-status-ind">▶</span></div>
-                <div class="ipod-main">
-                  <div class="ipod-art"><img id="ipod-art" src="demodisccover-hq.png" alt="art"/></div>
-                  <div class="ipod-meta">
-                    <div id="ipod-title" class="ipod-title">—</div>
-                    <div id="ipod-artist" class="ipod-artist">—</div>
-                  </div>
-                </div>
-                <div class="ipod-progress">
-                  <div id="ipod-time-cur" class="ipod-time">0:00</div>
-                  <div class="ipod-bar" id="ipod-seek"><div class="ipod-bar-fill" id="ipod-bar-fill"></div></div>
-                  <div id="ipod-time-dur" class="ipod-time">0:00</div>
-                </div>
-                <div class="ipod-list" id="ipod-list"></div>
-              </div>
-              <div class="ipod-wheel">
-                <div class="wheel" id="ipod-wheel">
-                  <div class="wheel-btn btn-menu" id="ipod-btn-menu">MENU</div>
-                  <div class="wheel-btn btn-prev" id="ipod-btn-prev">⏮</div>
-                  <div class="wheel-btn btn-next" id="ipod-btn-next">⏭</div>
-                  <div class="wheel-btn btn-play" id="ipod-btn-play">⏯</div>
-                  <div class="wheel-center" id="ipod-btn-center">SELECT</div>
-                </div>
-              </div>
-              <audio id="ipod-audio" preload="metadata"></audio>
-            </div>
-          </div>`;
-        setupIpodPlayer(section);
       }
     }
 
@@ -552,13 +710,7 @@ function openWindow(title) {
         description: 'Isolated sounds and beats',
         action: () => openMusicSection('iso')
       },
-      {
-        id: 'ipod',
-        title: 'iPod Player',
-        image: 'cdicon.gif',
-        description: 'Your personal music player',
-        action: () => openMusicSection('ipod')
-      }
+      
     ];
 
     let currentIndex = 0;
@@ -574,9 +726,15 @@ function openWindow(title) {
         item.className = 'carousel-item' + (index === 0 ? ' active' : '');
         item.innerHTML = `
           <img src="${release.image}" alt="${release.title}" />
+          <div class="reflection"></div>
           <div class="title">${release.title}</div>
         `;
         item.addEventListener('click', () => selectItem(index));
+        // Open in-window 3D player on double-click
+        item.addEventListener('dblclick', () => {
+          const img = item.querySelector('img');
+          openWindowPlayerForRelease(release, img);
+        });
         carouselTrack.appendChild(item);
         
         // Create dot
@@ -598,8 +756,22 @@ function openWindow(title) {
     function updateCarousel() {
       const items = carouselTrack.querySelectorAll('.carousel-item');
       const dots = dotsContainer.querySelectorAll('.carousel-dot');
+      const spacing = 220; // horizontal spacing between covers
+      const baseDepth = -180; // z for non-active
+      const maxRotate = 28; // degrees
       
       items.forEach((item, index) => {
+        const offset = index - currentIndex;
+        const sign = Math.sign(offset);
+        const abs = Math.abs(offset);
+        const translateX = offset * spacing;
+        const depth = abs === 0 ? 0 : baseDepth - Math.min(120, (abs - 1) * 40);
+        const rotate = abs === 0 ? 0 : sign * maxRotate;
+        const scale = abs === 0 ? 1 : 0.82 - Math.min(0.22, (abs - 1) * 0.05);
+        const opacity = Math.max(0.22, 1 - abs * 0.18);
+        item.style.transform = `translateX(${translateX}px) translateZ(${depth}px) rotateY(${rotate}deg) scale(${scale})`;
+        item.style.opacity = String(opacity);
+        item.style.zIndex = String(100 - abs);
         item.classList.toggle('active', index === currentIndex);
       });
       
@@ -607,14 +779,11 @@ function openWindow(title) {
         dot.classList.toggle('active', index === currentIndex);
       });
       
-      // Center the active item
-      const activeItem = items[currentIndex];
-      if (activeItem) {
-        const containerWidth = carouselTrack.parentElement.offsetWidth;
-        const itemWidth = activeItem.offsetWidth;
-        const scrollLeft = activeItem.offsetLeft - (containerWidth / 2) + (itemWidth / 2);
-        carouselTrack.style.transform = `translateX(-${scrollLeft - activeItem.offsetLeft + 15}px)`;
-      }
+      // Keep track centered visually by translating the track so the active is in the middle
+      const containerWidth = carouselTrack.parentElement.offsetWidth;
+      const itemWidth = items[0] ? items[0].offsetWidth : 200;
+      const centerOffset = (containerWidth - itemWidth) / 2;
+      carouselTrack.style.transform = `translateX(${centerOffset}px)`;
     }
     
     function updateDetails() {
@@ -637,7 +806,10 @@ function openWindow(title) {
     });
     
     playButton.addEventListener('click', () => {
-      releases[currentIndex].action();
+      const items = carouselTrack.querySelectorAll('.carousel-item');
+      const active = items[currentIndex];
+      const img = active ? active.querySelector('img') : null;
+      openWindowPlayerForRelease(releases[currentIndex], img);
     });
     
     // Keyboard navigation
@@ -651,10 +823,79 @@ function openWindow(title) {
         updateCarousel();
         updateDetails();
       } else if (e.key === 'Enter') {
-        releases[currentIndex].action();
+        const items = carouselTrack.querySelectorAll('.carousel-item');
+        const active = items[currentIndex];
+        const img = active ? active.querySelector('img') : null;
+        openWindowPlayerForRelease(releases[currentIndex], img);
       }
     });
     
+    // Window-scoped 3D player controller
+    let winAudio = null;
+    const winState = { playlist: [], index: 0, meta: { artist: '', cover: '' } };
+    const winPlayerRoot = content.querySelector('#window-player');
+    const wpArt = content.querySelector('#window-player-art');
+    const wpNow = content.querySelector('#window-now');
+    const wpArtist = content.querySelector('#window-artist');
+    const wpProgressBar = content.querySelector('#window-progress');
+    const wpProgress = content.querySelector('#window-progress-fill');
+    const wpCur = content.querySelector('#window-cur');
+    const wpDur = content.querySelector('#window-dur');
+    const wpPrev = content.querySelector('#window-prev');
+    const wpPlay = content.querySelector('#window-play');
+    const wpNext = content.querySelector('#window-next');
+    const wpVol = content.querySelector('#window-volume');
+
+    function fmtTime(s){ s=Math.max(0,Math.floor(s||0)); const m=Math.floor(s/60), ss=s%60; return `${m}:${ss<10?'0':''}${ss}`; }
+    function ensureWinAudio(){ if (!winAudio) { winAudio = new Audio(); winAudio.preload = 'metadata'; bindWinAudio(); } }
+    function bindWinAudio(){
+      if (!winAudio) return;
+      winAudio.addEventListener('loadedmetadata', ()=>{ wpDur.textContent = fmtTime(winAudio.duration||0); });
+      winAudio.addEventListener('timeupdate', ()=>{ wpCur.textContent = fmtTime(winAudio.currentTime||0); const d=Math.max(0.001, winAudio.duration||0); const p=Math.min(1,(winAudio.currentTime||0)/d); wpProgress.style.width=(p*100).toFixed(2)+'%'; });
+      winAudio.addEventListener('ended', ()=>{ winLoad(winState.index+1); winPlay(); });
+      winAudio.addEventListener('play', reflectBtn);
+      winAudio.addEventListener('pause', reflectBtn);
+    }
+    function reflectBtn(){ if (!winAudio) return; wpPlay.textContent = winAudio.paused ? '▶' : '⏸'; }
+    function winFlip(){ const art3d = content.querySelector('#window-player .album-art-3d'); if (!art3d) return; art3d.classList.add('flipping'); setTimeout(()=>art3d.classList.remove('flipping'), 900); }
+    function winUpdateMeta(){ const t=winState.playlist[winState.index]; if (!t) return; wpNow.textContent=t.title||'—'; wpArtist.textContent=t.artist||winState.meta.artist||''; wpArt.src=t.cover||winState.meta.cover||''; }
+    function winLoad(i){ if (!winState.playlist.length) return; ensureWinAudio(); winState.index=(i+winState.playlist.length)%winState.playlist.length; const t=winState.playlist[winState.index]; if (!t) return; winAudio.src=t.src; try{ winAudio.currentTime=0; }catch{} winAudio.load(); winUpdateMeta(); winFlip(); }
+    function winPlay(){ ensureWinAudio(); if (!winAudio.src && winState.playlist.length) winLoad(winState.index); try{ winAudio.play().then(reflectBtn).catch(()=>{}); }catch{} reflectBtn(); }
+    function winPause(){ try{ winAudio.pause(); }catch{} reflectBtn(); }
+    function winNext(){ winLoad(winState.index+1); winPlay(); }
+    function winPrev(){ winLoad(winState.index-1); winPlay(); }
+    function setWindowPlaylist(playlist, meta={}){
+      winState.playlist=(playlist||[]).filter(t=>t&&t.src);
+      winState.index=0;
+      winState.meta={ artist: meta.artist||'', cover: meta.cover||'' };
+      if (wpVol) { try { ensureWinAudio(); winAudio.volume = Number(wpVol.value||0.7); } catch {} }
+      const t0=winState.playlist[0]; if (t0){ wpArt.src=t0.cover||winState.meta.cover||''; wpNow.textContent=t0.title||'—'; wpArtist.textContent=t0.artist||winState.meta.artist||''; }
+    }
+    function showWindowPlayer(){ if (winPlayerRoot) { winPlayerRoot.classList.add('active'); } }
+    function openWindowPlayerForRelease(release, fromImgEl){
+      let playlist=[]; let meta={};
+      try { if (release && release.id && typeof albumConfigs !== 'undefined' && albumConfigs[release.id]) { const cfg = albumConfigs[release.id]; meta = { artist: cfg.title || release.title || '', cover: cfg.albumCover || release.image || '' }; playlist = (cfg.playlist||[]).map((p,i)=>({ title: p.title || `Track ${i+1}`, artist: cfg.title || '', src: p.src, cover: cfg.albumCover })); } } catch {}
+      if (!playlist.length && release && release.id === 'demodisc_01') {
+        meta = { artist: 'demodisc_01', cover: 'demodisccover-hq.png' };
+        playlist = [
+          { title: 'crackers', artist: 'lewd', src: 'crackers.mp3', cover: meta.cover },
+          { title: 'puzzle', artist: 'lewd', src: 'puzzle.mp3', cover: meta.cover },
+          { title: 'meadowtronic', artist: 'lewd', src: 'meadowtronic.mp3', cover: meta.cover },
+          { title: 'slideshow', artist: 'lewd', src: 'slideshow.mp3', cover: meta.cover },
+          { title: 'goldentime', artist: 'lewd', src: 'goldentime.mp3', cover: meta.cover },
+        ].filter(t=>!!t.src);
+      }
+      if (!playlist.length && release) { meta = { artist: release.title || '', cover: release.image || '' }; }
+      setWindowPlaylist(playlist, meta); showWindowPlayer(); winPlay();
+    }
+
+    // Bind player controls
+    if (wpPlay) wpPlay.addEventListener('click', ()=>{ if (!winAudio || winAudio.paused) winPlay(); else winPause(); });
+    if (wpNext) wpNext.addEventListener('click', winNext);
+    if (wpPrev) wpPrev.addEventListener('click', winPrev);
+    if (wpProgressBar) wpProgressBar.addEventListener('click', (e)=>{ const r=wpProgressBar.getBoundingClientRect(); const p=Math.min(1, Math.max(0,(e.clientX-r.left)/r.width)); const d=Math.max(0, (winAudio&&winAudio.duration)||0); if (winAudio) winAudio.currentTime=p*d; });
+    if (wpVol) wpVol.addEventListener('input', ()=>{ try{ ensureWinAudio(); winAudio.volume=Number(wpVol.value||0.7);}catch{} });
+
     // Initialize the carousel
     createCarousel();
     
@@ -662,174 +903,6 @@ function openWindow(title) {
     window.openMusicSection = openMusicSection;
     window.showMainMusic = showMainMusic;
 
-    // Basic iPod player logic (scoped to Music window)
-    function setupIpodPlayer(scopeRoot) {
-      const audio = scopeRoot.querySelector('#ipod-audio');
-      const titleEl = scopeRoot.querySelector('#ipod-title');
-      const artistEl = scopeRoot.querySelector('#ipod-artist');
-      const artEl = scopeRoot.querySelector('#ipod-art');
-      const fillEl = scopeRoot.querySelector('#ipod-bar-fill');
-      const curEl = scopeRoot.querySelector('#ipod-time-cur');
-      const durEl = scopeRoot.querySelector('#ipod-time-dur');
-      const seek = scopeRoot.querySelector('#ipod-seek');
-      const list = scopeRoot.querySelector('#ipod-list');
-      const statusInd = scopeRoot.querySelector('#ipod-status-ind');
-      const btnPrev = scopeRoot.querySelector('#ipod-btn-prev');
-      const btnNext = scopeRoot.querySelector('#ipod-btn-next');
-      const btnPlay = scopeRoot.querySelector('#ipod-btn-play');
-      const btnMenu = scopeRoot.querySelector('#ipod-btn-menu');
-      const btnCenter = scopeRoot.querySelector('#ipod-btn-center');
-
-      const padTime = (s)=>{
-        s = Math.max(0, Math.floor(s||0));
-        const m = Math.floor(s/60); const ss = s%60; return `${m}:${ss<10?'0':''}${ss}`;
-      };
-
-      const tracks = [
-        { title: 'demodisc_01', artist: 'lewd', src: 'crackers.mp3', cover: 'demodisccover-hq.png' },
-        { title: 'puzzle', artist: 'lewd', src: 'puzzle.mp3', cover: 'demodisccover-hq.png' },
-        { title: 'meadowtronic', artist: 'lewd', src: 'meadowtronic.mp3', cover: 'demodisccover-hq.png' },
-        { title: 'slideshow', artist: 'lewd', src: 'slideshow.mp3', cover: 'demodisccover-hq.png' },
-        { title: 'goldentime', artist: 'lewd', src: 'goldentime.mp3', cover: 'demodisccover-hq.png' }
-      ].filter(t=>!!t.src);
-
-      let index = 0;            // currently loaded track index
-      let cursor = 0;           // selection cursor when list is open
-      let listOpen = false;
-
-      function load(i) {
-        index = (i+tracks.length)%tracks.length;
-        const t = tracks[index];
-        titleEl.textContent = t.title;
-        artistEl.textContent = t.artist || '';
-        artEl.src = t.cover || 'demodisccover-hq.png';
-        audio.src = t.src;
-        audio.currentTime = 0;
-        audio.load();
-        cursor = index;
-        highlightList();
-      }
-
-      function playPause() {
-        if (!audio.src) load(index);
-        if (audio.paused) { audio.play().catch(()=>{}); } else { audio.pause(); }
-      }
-
-      function next() { load(index+1); audio.play().catch(()=>{}); }
-      function prev() { load(index-1); audio.play().catch(()=>{}); }
-
-      function toggleList() {
-        listOpen = !listOpen;
-        list.style.display = listOpen ? 'block' : 'none';
-        highlightList();
-      }
-
-      function buildList() {
-        list.innerHTML = '';
-        if (!tracks.length) { list.innerHTML = '<div class="ipod-empty">No tracks found</div>'; return; }
-        tracks.forEach((t, i)=>{
-          const row = document.createElement('div');
-          row.className = 'ipod-list-item';
-          row.innerHTML = `<div class="ipod-list-art"><img src="${t.cover || 'demodisccover-hq.png'}"/></div>
-                           <div style="min-width:0;">
-                             <div style="font-weight:700; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${t.title}</div>
-                             <div style="font-size:12px; color:#b9c7d6; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${t.artist||''}</div>
-                           </div>`;
-          row.addEventListener('click', ()=>{ load(i); audio.play().catch(()=>{}); if (listOpen) toggleList(); });
-          list.appendChild(row);
-        });
-        highlightList();
-      }
-
-      function highlightList() {
-        const rows = Array.from(list.querySelectorAll('.ipod-list-item'));
-        const activeIdx = listOpen ? cursor : index;
-        rows.forEach((r, i)=>{ r.classList.toggle('active', i===activeIdx); });
-      }
-
-      // Events
-      btnPlay.addEventListener('click', playPause);
-      btnNext.addEventListener('click', next);
-      btnPrev.addEventListener('click', prev);
-      btnMenu.addEventListener('click', toggleList);
-      btnCenter.addEventListener('click', ()=>{
-        if (listOpen) { load(cursor); audio.play().catch(()=>{}); toggleList(); }
-      });
-
-      audio.addEventListener('play', ()=>{ statusInd.textContent='▶'; });
-      audio.addEventListener('pause', ()=>{ statusInd.textContent='❚❚'; });
-      audio.addEventListener('ended', next);
-      audio.addEventListener('loadedmetadata', ()=>{ durEl.textContent = padTime(audio.duration||0); });
-      audio.addEventListener('timeupdate', ()=>{
-        curEl.textContent = padTime(audio.currentTime||0);
-        const d = Math.max(0.001, audio.duration||0); const p = Math.min(1, (audio.currentTime||0)/d);
-        fillEl.style.width = (p*100).toFixed(2)+'%';
-      });
-
-      // Click-to-seek
-      seek.addEventListener('click', (e)=>{
-        const rect = seek.getBoundingClientRect();
-        const p = Math.min(1, Math.max(0, (e.clientX - rect.left)/rect.width));
-        const d = Math.max(0, audio.duration||0);
-        audio.currentTime = p * d;
-      });
-
-      // Initialize
-      buildList();
-      load(0);
-
-      // --- Click wheel rotation behavior ---
-      const wheel = scopeRoot.querySelector('#ipod-wheel');
-      let tracking = false;
-      let lastAngle = null;
-      let accumDeg = 0;                     // accumulated angle delta
-      const stepDeg = 28;                   // degrees per list step
-      const scrubSecondsPerStep = 2;        // scrub amount when list is closed
-
-      const getAngle = (clientX, clientY) => {
-        const rect = wheel.getBoundingClientRect();
-        const cx = rect.left + rect.width/2;
-        const cy = rect.top + rect.height/2;
-        const dx = clientX - cx;
-        const dy = clientY - cy;
-        let a = Math.atan2(dy, dx) * 180/Math.PI; // -180..180, 0 at +X
-        // convert to 0..360 with 0 at top like iPod
-        a = (a + 90 + 360) % 360;
-        return a;
-      };
-
-      const onMove = (e) => {
-        if (!tracking) return;
-        const point = (e.touches && e.touches[0]) || e;
-        const angle = getAngle(point.clientX, point.clientY);
-        if (lastAngle == null) { lastAngle = angle; return; }
-        // shortest delta direction
-        let delta = angle - lastAngle;
-        if (delta > 180) delta -= 360; else if (delta < -180) delta += 360;
-        lastAngle = angle;
-        accumDeg += delta;
-        while (accumDeg >= stepDeg) {
-          accumDeg -= stepDeg;
-          if (listOpen) { cursor = (cursor + 1) % tracks.length; highlightList(); }
-          else { audio.currentTime = Math.min((audio.duration||0), (audio.currentTime||0) + scrubSecondsPerStep); }
-        }
-        while (accumDeg <= -stepDeg) {
-          accumDeg += stepDeg;
-          if (listOpen) { cursor = (cursor - 1 + tracks.length) % tracks.length; highlightList(); }
-          else { audio.currentTime = Math.max(0, (audio.currentTime||0) - scrubSecondsPerStep); }
-        }
-      };
-
-      const onStart = (e) => { tracking = true; lastAngle = null; accumDeg = 0; onMove(e); };
-      const onEnd = () => { tracking = false; lastAngle = null; accumDeg = 0; };
-
-      wheel.addEventListener('mousedown', onStart);
-      window.addEventListener('mousemove', onMove);
-      window.addEventListener('mouseup', onEnd);
-      wheel.addEventListener('touchstart', onStart, {passive:true});
-      window.addEventListener('touchmove', onMove, {passive:true});
-      window.addEventListener('touchend', onEnd);
-    }
   } else if (title === "Whodunit?") {
     if (!isMobile) {
       win.style.width = '760px';

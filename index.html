@@ -131,5 +131,42 @@
     </div>
   </div>
 
+  <!-- Music Player -->
+  <div id="music-player" class="music-player">
+    <div class="music-player-container">
+      <div class="album-art-3d">
+        <div class="album-art-front">
+          <img src="" alt="Album Art" id="player-album-art">
+        </div>
+        <div class="album-art-back"></div>
+        <div class="album-art-side"></div>
+      </div>
+      <div class="player-controls">
+        <div class="track-info">
+          <h3 id="now-playing">Select a track</h3>
+          <p id="artist-name">Artist</p>
+        </div>
+        <div class="progress-container">
+          <div class="progress-bar">
+            <div class="progress"></div>
+          </div>
+          <div class="time-info">
+            <span class="current-time">0:00</span>
+            <span class="duration">0:00</span>
+          </div>
+        </div>
+        <div class="control-buttons">
+          <button class="control-btn" id="prev-btn">⏮</button>
+          <button class="control-btn play-btn" id="play-btn">▶</button>
+          <button class="control-btn" id="next-btn">⏭</button>
+        </div>
+        <div class="volume-control">
+          <span class="volume-icon">🔊</span>
+          <input type="range" id="volume-slider" min="0" max="1" step="0.1" value="0.7">
+        </div>
+      </div>
+      <button class="close-player" id="close-player">×</button>
+    </div>
+  </div>
 </body>
 </html>
