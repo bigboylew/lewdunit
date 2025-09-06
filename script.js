@@ -362,10 +362,14 @@ function openWindow(title) {
         
         .carousel-item img {
           width: 100%;
-          height: 210px;
+          aspect-ratio: 1 / 1; /* ensure square covers */
+          height: auto;
           object-fit: cover;
           border-bottom: 2px solid #333;
           box-shadow: inset 0 -10px 20px rgba(0,0,0,0.35);
+          opacity: 0; /* prevent flash before layout */
+          transition: opacity 200ms ease;
+          display: block;
         }
         
         .carousel-item .title {
@@ -382,6 +386,18 @@ function openWindow(title) {
           white-space: nowrap;
           overflow: hidden;
           text-overflow: ellipsis;
+        }
+
+        .carousel-item .subtitle {
+          margin-top: 2px;
+          text-align: center;
+          font-size: 11px;
+          font-family: Arial, sans-serif;
+          color: #c0c0c0; /* slightly grey */
+          width: 100%;
+          padding: 2px 0 0;
+          box-sizing: border-box;
+          background: transparent; /* no extra backdrop */
         }
 
         /* Reflections */
@@ -681,12 +697,31 @@ function openWindow(title) {
     const currentTitle = content.querySelector('#current-title');
     const currentDesc = content.querySelector('#current-description');
 
+    // --- UI sounds (Safari-safe: only after first user interaction) ---
+    let uiSoundEnabled = false;
+    const hoverSfx = new Audio('hoversound.wav');
+    const selectSfx = new Audio('selectsound.wav');
+    hoverSfx.preload = 'auto';
+    selectSfx.preload = 'auto';
+    function enableUiSoundsOnce() {
+      uiSoundEnabled = true;
+      window.removeEventListener('pointerdown', enableUiSoundsOnce);
+      window.removeEventListener('keydown', enableUiSoundsOnce);
+    }
+    window.addEventListener('pointerdown', enableUiSoundsOnce, { once: true });
+    window.addEventListener('keydown', enableUiSoundsOnce, { once: true });
+    function tryPlayUI(audioEl) {
+      if (!uiSoundEnabled || !audioEl) return;
+      try { audioEl.currentTime = 0; audioEl.play().catch(()=>{}); } catch {}
+    }
+
     const releases = [
       {
         id: 'demodisc_01',
         title: 'demodisc_01',
         image: 'demodisccover.webp',
         description: 'A collection of experimental tracks',
+        type: 'Album',
         action: () => openWindow('demodisc_01')
       },
       {
@@ -694,6 +729,7 @@ function openWindow(title) {
         title: 'apple',
         image: 'applecover.webp',
         description: 'Fresh sounds from the orchard',
+        type: 'Single',
         action: () => openMusicSection('apple')
       },
       {
@@ -701,6 +737,7 @@ function openWindow(title) {
         title: 'GOODTRIP',
         image: 'goodtrip.webp',
         description: 'A journey through sound',
+        type: 'Album',
         action: () => openWindow('GOODTRIP')
       },
       {
@@ -708,6 +745,7 @@ function openWindow(title) {
         title: 'iso',
         image: 'isocover.webp',
         description: 'Isolated sounds and beats',
+        type: 'EP',
         action: () => openMusicSection('iso')
       },
       
@@ -728,12 +766,23 @@ function openWindow(title) {
           <img src="${release.image}" alt="${release.title}" />
           <div class="reflection"></div>
           <div class="title">${release.title}</div>
+          <div class="subtitle">${release.type || ''}</div>
         `;
-        item.addEventListener('click', () => selectItem(index));
-        // Open in-window 3D player on double-click
-        item.addEventListener('dblclick', () => {
-          const img = item.querySelector('img');
-          openWindowPlayerForRelease(release, img);
+        // Fade in image after it loads to avoid flash
+        const imgEl = item.querySelector('img');
+        if (imgEl) {
+          if (imgEl.complete) {
+            requestAnimationFrame(()=>{ imgEl.style.opacity = '1'; });
+          } else {
+            imgEl.addEventListener('load', () => { imgEl.style.opacity = '1'; }, { once: true });
+          }
+        }
+        // UI sounds
+        item.addEventListener('mouseenter', () => tryPlayUI(hoverSfx));
+        // Single click opens the album window
+        item.addEventListener('click', () => {
+          tryPlayUI(selectSfx);
+          openWindow(release.title);
         });
         carouselTrack.appendChild(item);
         
@@ -745,9 +794,22 @@ function openWindow(title) {
       });
       
       updateDetails();
+      // Ensure initial layout is correct
+      updateCarousel();
+      // Recenter once images have their intrinsic sizes
+      const imgs = carouselTrack.querySelectorAll('img');
+      imgs.forEach(img => {
+        if (!img.complete) {
+          img.addEventListener('load', () => updateCarousel(), { once: true });
+        }
+      });
+      // Also recenter shortly after first paint to avoid initial jitter
+      setTimeout(updateCarousel, 50);
+      setTimeout(updateCarousel, 150);
     }
     
     function selectItem(index) {
+      tryPlayUI(selectSfx);
       currentIndex = (index + releases.length) % releases.length;
       updateCarousel();
       updateDetails();
@@ -756,60 +818,61 @@ function openWindow(title) {
     function updateCarousel() {
       const items = carouselTrack.querySelectorAll('.carousel-item');
       const dots = dotsContainer.querySelectorAll('.carousel-dot');
-      const spacing = 220; // horizontal spacing between covers
-      const baseDepth = -180; // z for non-active
-      const maxRotate = 28; // degrees
-      
+      if (!items.length) return;
+
+      const first = items[0];
+      const itemWidth = first.offsetWidth || 200;
+      const cs = window.getComputedStyle(first);
+      const margin = (parseFloat(cs.marginLeft) || 0) + (parseFloat(cs.marginRight) || 0);
+      const gap = itemWidth + margin; // actual advance per item in the flex row
+
+      // Visual state: active vs inactive
       items.forEach((item, index) => {
-        const offset = index - currentIndex;
-        const sign = Math.sign(offset);
-        const abs = Math.abs(offset);
-        const translateX = offset * spacing;
-        const depth = abs === 0 ? 0 : baseDepth - Math.min(120, (abs - 1) * 40);
-        const rotate = abs === 0 ? 0 : sign * maxRotate;
-        const scale = abs === 0 ? 1 : 0.82 - Math.min(0.22, (abs - 1) * 0.05);
-        const opacity = Math.max(0.22, 1 - abs * 0.18);
-        item.style.transform = `translateX(${translateX}px) translateZ(${depth}px) rotateY(${rotate}deg) scale(${scale})`;
-        item.style.opacity = String(opacity);
-        item.style.zIndex = String(100 - abs);
+        // Remove any per-item transforms so flex layout remains predictable
+        item.style.transform = '';
+        item.style.opacity = index === currentIndex ? '1' : '0.6';
+        item.style.zIndex = String(index === currentIndex ? 10 : 1);
         item.classList.toggle('active', index === currentIndex);
       });
-      
+
+      // Update dots
       dots.forEach((dot, index) => {
         dot.classList.toggle('active', index === currentIndex);
       });
-      
-      // Keep track centered visually by translating the track so the active is in the middle
-      const containerWidth = carouselTrack.parentElement.offsetWidth;
-      const itemWidth = items[0] ? items[0].offsetWidth : 200;
-      const centerOffset = (containerWidth - itemWidth) / 2;
-      carouselTrack.style.transform = `translateX(${centerOffset}px)`;
+
+      // Translate the whole track so the active item is centered
+      const viewport = carouselTrack.parentElement;
+      const containerWidth = viewport ? viewport.offsetWidth : (itemWidth + margin);
+      const active = items[currentIndex];
+      const targetCenter = active ? (active.offsetLeft + (active.offsetWidth || itemWidth) / 2) : 0;
+      const trackX = (containerWidth / 2) - targetCenter;
+      carouselTrack.style.transform = `translateX(${trackX}px)`;
     }
     
     function updateDetails() {
       const release = releases[currentIndex];
       currentTitle.textContent = release.title;
-      currentDesc.textContent = release.description;
+      currentDesc.textContent = release.type || '';
     }
     
     // Event listeners
     prevButton.addEventListener('click', () => {
+      tryPlayUI(hoverSfx);
       currentIndex = (currentIndex - 1 + releases.length) % releases.length;
       updateCarousel();
       updateDetails();
     });
     
     nextButton.addEventListener('click', () => {
+      tryPlayUI(hoverSfx);
       currentIndex = (currentIndex + 1) % releases.length;
       updateCarousel();
       updateDetails();
     });
     
     playButton.addEventListener('click', () => {
-      const items = carouselTrack.querySelectorAll('.carousel-item');
-      const active = items[currentIndex];
-      const img = active ? active.querySelector('img') : null;
-      openWindowPlayerForRelease(releases[currentIndex], img);
+      tryPlayUI(selectSfx);
+      openWindow(releases[currentIndex].title);
     });
     
     // Keyboard navigation
@@ -823,10 +886,7 @@ function openWindow(title) {
         updateCarousel();
         updateDetails();
       } else if (e.key === 'Enter') {
-        const items = carouselTrack.querySelectorAll('.carousel-item');
-        const active = items[currentIndex];
-        const img = active ? active.querySelector('img') : null;
-        openWindowPlayerForRelease(releases[currentIndex], img);
+        openWindow(releases[currentIndex].title);
       }
     });
     
@@ -4066,6 +4126,12 @@ function addTaskbarIcon(title) {
     case 'GOODTRIP':
       imgSrc = 'goodtrip.png';
       break;
+    case 'apple':
+      imgSrc = 'applecover.webp';
+      break;
+    case 'iso':
+      imgSrc = 'isocover.webp';
+      break;
     case 'Store':
       imgSrc = 'storeicon.png';
       break;
@@ -4386,7 +4452,70 @@ const albumConfigs = {
     leftBackground: "brickwall.jpeg",
     modal: true
   },
-
+  demodisc_01: {
+    title: "demodisc_01",
+    playlist: [
+      { title: "crackers", src: "crackers.mp3" },
+      { title: "puzzle", src: "puzzle.mp3" },
+      { title: "meadowtronic", src: "meadowtronic.mp3" },
+      { title: "slideshow", src: "slideshow.mp3" },
+      { title: "goldentime", src: "goldentime.mp3" }
+    ],
+    cassetteImages: {
+      default: "cdicon.gif",
+      playing: "cdhand.gif",
+      paused: "cdicon.gif"
+    },
+    albumCover: "demodisccover.webp",
+    modalCover: "demodisccover-hq.png",
+    logo: "demodisclogo.png",
+    logoShadow: true,
+    trackInfoMap: {},
+    platformLinks: [],
+    background: "#ffffff",
+    leftBackground: "redbrick.jpg",
+    modal: true
+  },
+  apple: {
+    title: "apple",
+    playlist: [
+      { title: "BF", src: "recyclebinmusic/BF.mp3" },
+      { title: "INT", src: "recyclebinmusic/INT.mp3" }
+    ],
+    cassetteImages: {
+      default: "tape.png",
+      playing: "tapeplay.png",
+      paused: "tapepause.png"
+    },
+    albumCover: "applecover.webp",
+    logo: null,
+    logoShadow: false,
+    trackInfoMap: {},
+    platformLinks: [],
+    background: "graffitibg3.png",
+    leftBackground: "brickwall.jpeg",
+    modal: true
+  },
+  iso: {
+    title: "iso",
+    playlist: [
+      { title: "birdwatcher", src: "recyclebinmusic/birdwatcher.mp3" },
+      { title: "newblades", src: "recyclebinmusic/newblades.mp3" }
+    ],
+    cassetteImages: {
+      default: "tape.png",
+      playing: "tapeplay.png",
+      paused: "tapepause.png"
+    },
+    albumCover: "isocover.webp",
+    logo: null,
+    logoShadow: false,
+    trackInfoMap: {},
+    platformLinks: [],
+    background: "graffitibg4.png",
+    leftBackground: "brickwall.jpeg",
+    modal: true
+  }
 };
 
 // --- Modular Album Window Renderer ---
@@ -4475,7 +4604,7 @@ function renderAlbumWindow(config) {
       }
       .left-inner { display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100%; width: 100%; }
 
-      .goodtrip-right { padding: 0; position: relative; overflow-y: auto; overflow-x: hidden; display: flex; flex-direction: column; align-items: center; color: white; text-shadow: 0 0 4px #000; scrollbar-gutter: stable; flex: 1 1 auto; }
+      .goodtrip-right { padding: 0; position: relative; overflow-y: auto; overflow-x: hidden; display: flex; flex-direction: column; align-items: center; color: white; text-shadow: 0 0 2px rgba(0,0,0,0.6); scrollbar-gutter: stable; flex: 1 1 auto; }
       /* Vertical resizer between left and right panes */
       .goodtrip-resizer {
         flex: 0 0 6px;
@@ -4555,6 +4684,73 @@ function renderAlbumWindow(config) {
         filter: drop-shadow(0 1px 2px rgba(0,0,0,0.25));
       }
       .platform-icons a { display: inline-flex; }
+
+      /* Aero-styled dropdown tracklist */
+      .album-tracklist {
+        width: 100%;
+        max-width: 380px;
+        background: rgba(255,255,255,0.9);
+        border: 1px solid rgba(0,0,0,0.15);
+        border-radius: 8px;
+        box-shadow: 0 3px 10px rgba(0,0,0,0.18), inset 0 1px 0 rgba(255,255,255,0.6);
+        margin-top: 16px;
+        color: #111;
+        overflow: hidden;
+      }
+      .album-tracklist[open] { overflow: visible; }
+      .album-tracklist .tl-summary {
+        list-style: none;
+        display: block;
+        background: linear-gradient(#fefefe, #e9eef8);
+        padding: 8px 12px;
+        font-weight: 700;
+        border-bottom: 1px solid rgba(0,0,0,0.1);
+        cursor: pointer;
+        position: relative;
+        user-select: none;
+      }
+      .album-tracklist .tl-summary::-webkit-details-marker { display: none; }
+      .album-tracklist .tl-summary::after {
+        content: '▾';
+        position: absolute;
+        right: 10px;
+        top: 50%;
+        transform: translateY(-50%) rotate(-90deg);
+        transition: transform 280ms ease-in-out;
+        opacity: 0.7;
+      }
+      .album-tracklist[open] .tl-summary::after { transform: translateY(-50%) rotate(0deg); }
+      .album-tracklist ul {
+        list-style: none;
+        padding: 0;
+        margin: 0;
+        max-height: 0; /* collapsed */
+        opacity: 0;
+        transform: translateY(-4px);
+        transition: max-height 380ms ease-in-out, opacity 300ms ease-in-out, transform 320ms ease-in-out;
+        will-change: max-height, opacity, transform;
+        overflow: hidden;
+      }
+      .album-tracklist[open] ul {
+        max-height: 800px; /* enough to reveal list smoothly */
+        opacity: 1;
+        transform: translateY(0);
+      }
+      .album-tracklist li {
+        display: grid;
+        grid-template-columns: 28px 1fr 56px;
+        align-items: center;
+        gap: 8px;
+        padding: 8px 12px
+        border-top: 1px solid rgba(0,0,0,0.06);
+        transition: background 0.15s ease;
+        cursor: pointer;
+      }
+      .album-tracklist li:hover { background: rgba(74,144,226,0.08); }
+      .album-tracklist li.active { background: rgba(74,144,226,0.16); box-shadow: inset 0 0 0 1px rgba(74,144,226,0.35); }
+      .album-tracklist .idx { color:#666; font-weight:700; text-align:right; }
+      .album-tracklist .name { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+      .album-tracklist .len { color:#666; text-align:right; font-variant-numeric: tabular-nums; }
     </style>
     <div class="goodtrip-layout" data-title="${config.title}">
       <div class="goodtrip-left" data-title="${config.title}">
@@ -4570,6 +4766,10 @@ function renderAlbumWindow(config) {
         <div class="goodtrip-content-inner">
           <img src="${config.modalCover ? config.modalCover : config.albumCover}" alt="${config.title} Album Cover" class="album-cover" onclick="${config.modal ? 'openAlbumModal()' : ''}" />
           <div class="track-description" id="goodtrip-info-display" style="display:none"><strong>${config.title}</strong></div>
+          <details class="album-tracklist">
+            <summary class="tl-summary">Tracklist</summary>
+            <ul id="album-tracklist"></ul>
+          </details>
           ${platformIcons}
         </div>
         <audio id="goodtrip-audio" src=""></audio>
@@ -4762,6 +4962,7 @@ function renderAlbumWindow(config) {
     cassetteImg.src = cassetteImages.playing;
     playlistEnded = false;
     infoDisplay.classList.remove("default-info");
+    refreshTracklistActive();
   }
 
   content.querySelector('#goodtrip-play').addEventListener('click', () => {
@@ -4816,6 +5017,71 @@ function renderAlbumWindow(config) {
       cassetteImg.src = cassetteImages.default;
     }
   });
+
+  // Build tracklist UI
+  const tl = content.querySelector('#album-tracklist');
+  function fmtLen(sec) {
+    if (!isFinite(sec) || sec <= 0) return '';
+    sec = Math.floor(sec);
+    const m = Math.floor(sec/60), s = sec%60;
+    return `${m}:${s<10?'0':''}${s}`;
+  }
+  function bindDurations() {
+    // Load each track metadata in background to populate lengths
+    playlist.forEach((t, i) => {
+      if (!t || !t.src) return;
+      const a = new Audio();
+      a.preload = 'metadata';
+      a.src = t.src;
+      a.addEventListener('loadedmetadata', () => {
+        const li = tl.querySelector(`li[data-index="${i}"] .len`);
+        if (li) li.textContent = fmtLen(a.duration || 0);
+      });
+    });
+  }
+  function getDisplayTitle(rawTitle) {
+    if (config && config.title === 'GOODTRIP') {
+      // Strip prefixes like "Track 1/17 - "
+      return String(rawTitle || '').replace(/^Track\s*\d+\/\d+\s*-\s*/i, '').trim();
+    }
+    return rawTitle || '';
+  }
+  function renderTracklist() {
+    if (!tl) return;
+    tl.innerHTML = playlist.map((t, i) => `
+      <li data-index="${i}">
+        <div class="idx">${String(i+1).padStart(2,'0')}</div>
+        <div class="name">${getDisplayTitle(t.title) || `Track ${i+1}`}</div>
+        <div class="len"></div>
+      </li>
+    `).join('');
+    Array.from(tl.querySelectorAll('li')).forEach(li => {
+      li.addEventListener('click', () => {
+        const i = parseInt(li.getAttribute('data-index'), 10) || 0;
+        if (i === currentTrack && !audio.paused) {
+          audio.pause();
+        } else {
+          updateTrack(i);
+        }
+      });
+      li.addEventListener('dblclick', () => {
+        const i = parseInt(li.getAttribute('data-index'), 10) || 0;
+        updateTrack(i);
+      });
+    });
+    refreshTracklistActive();
+    bindDurations();
+  }
+  function refreshTracklistActive() {
+    if (!tl) return;
+    Array.from(tl.querySelectorAll('li')).forEach(li => {
+      const i = parseInt(li.getAttribute('data-index'), 10) || 0;
+      li.classList.toggle('active', i === currentTrack);
+    });
+  }
+  audio.addEventListener('play', refreshTracklistActive);
+  audio.addEventListener('pause', refreshTracklistActive);
+  renderTracklist();
 
   function setupVolumeControl() {
     const bars = Array.from(content.querySelectorAll('#volume-control .bar'));
