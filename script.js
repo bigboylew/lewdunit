@@ -7,11 +7,15 @@ const sounds = {
   'sound-error': new Audio('https://files.catbox.moe/2elxeq.mp3'),
   'sound-dooropen': new Audio('dooropen.mp3'),
   'sound-storeopen': new Audio('storeopen.mp3'),
+  // Global UI SFX
+  'ui-hover': new Audio('hoversound.wav'),
+  'ui-select': new Audio('selectsound.wav'),
 };
 
-// Preload all sounds
+// Preload and warm up all sounds
 for (const soundKey in sounds) {
-  sounds[soundKey].load();
+  try { sounds[soundKey].preload = 'auto'; } catch {}
+  try { sounds[soundKey].load(); } catch {}
 }
 
 // One-time unlock to satisfy autoplay policies: silently play/pause each sound on first user interaction
@@ -699,10 +703,8 @@ function openWindow(title) {
 
     // --- UI sounds (Safari-safe: only after first user interaction) ---
     let uiSoundEnabled = false;
-    const hoverSfx = new Audio('hoversound.wav');
-    const selectSfx = new Audio('selectsound.wav');
-    hoverSfx.preload = 'auto';
-    selectSfx.preload = 'auto';
+    const hoverSfx = sounds['ui-hover'];
+    const selectSfx = sounds['ui-select'];
     function enableUiSoundsOnce() {
       uiSoundEnabled = true;
       window.removeEventListener('pointerdown', enableUiSoundsOnce);
