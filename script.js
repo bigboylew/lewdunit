@@ -259,6 +259,33 @@ function openWindow(title) {
   if (existingWindow) {
     if (existingWindow.style.display === 'none') {
       existingWindow.style.display = 'block';
+      // Play UI speech when reopening a previously hidden window (skip album windows)
+      try {
+        const key = String(title || '').trim().toLowerCase();
+        const skip = key === 'demodisc_01' || key === 'goodtrip' || key === 'whodunit?';
+        if (skip) { /* no speech for album windows */ }
+        else {
+          const speechMap = {
+            'Recycle Bin': 'uispeech/recycle.wav',
+            'demodisc_01': 'uispeech/demodisc.wav',
+            'GOODTRIP': 'uispeech/goodtrip.wav',
+            'Music': 'uispeech/music.wav',
+            'Store': 'uispeech/store.wav',
+            'Whodunit?': 'uispeech/whodunit.wav',
+          };
+          const speechSrc = (speechMap[title] || speechMap[key]) || 'uispeech/info.wav';
+          const speechAudio = new Audio(speechSrc);
+          speechAudio.preload = 'auto';
+          speechAudio.muted = false;
+          speechAudio.volume = 1;
+          const tryPlay = () => { try { speechAudio.currentTime = 0; } catch {}; speechAudio.play().catch(()=>{}); };
+          speechAudio.play().catch(()=>{
+            const once = () => { window.removeEventListener('pointerdown', once, true); window.removeEventListener('keydown', once, true); tryPlay(); };
+            window.addEventListener('pointerdown', once, true);
+            window.addEventListener('keydown', once, true);
+          });
+        }
+      } catch {}
     }
     bringToFront(existingWindow);
     return;
@@ -272,6 +299,32 @@ function openWindow(title) {
   
   header.textContent = title;
   win.dataset.title = title;
+  // Play window-specific UI speech once on open (skip album windows)
+  try {
+    const speechMap = {
+      'Recycle Bin': 'uispeech/recycle.wav',
+      'demodisc_01': 'uispeech/demodisc.wav',
+      'GOODTRIP': 'uispeech/goodtrip.wav',
+      'Music': 'uispeech/music.wav',
+      'Store': 'uispeech/store.wav',
+      'Whodunit?': 'uispeech/whodunit.wav',
+    };
+    const key = String(title || '').trim().toLowerCase();
+    const skip = key === 'demodisc_01' || key === 'goodtrip' || key === 'whodunit?';
+    if (!skip) {
+      const speechSrc = (speechMap[title] || speechMap[key]) || 'uispeech/info.wav';
+      const speechAudio = new Audio(speechSrc);
+      speechAudio.preload = 'auto';
+      speechAudio.muted = false;
+      speechAudio.volume = 1;
+      const tryPlay = () => { try { speechAudio.currentTime = 0; } catch {}; speechAudio.play().catch(()=>{}); };
+      speechAudio.play().catch(()=>{
+        const once = () => { window.removeEventListener('pointerdown', once, true); window.removeEventListener('keydown', once, true); tryPlay(); };
+        window.addEventListener('pointerdown', once, true);
+        window.addEventListener('keydown', once, true);
+      });
+    }
+  } catch {}
 
   if (title === "Music") {
     // Set window size to match USB Loader GX aspect ratio
@@ -333,10 +386,11 @@ function openWindow(title) {
         }
         
         .carousel-item {
-          min-width: 200px;
+          width: 220px;
+          min-width: 220px;
           height: 280px;
           margin: 0 8px;
-          transition: all 0.28s ease;
+          transition: all 0.28s ease, opacity 0.2s ease;
           cursor: pointer;
           position: relative;
           display: flex;
@@ -350,6 +404,7 @@ function openWindow(title) {
           background: #111;
           border: 2px solid #222;
           box-shadow: 0 10px 20px rgba(0, 0, 0, 0.65);
+          box-sizing: border-box;
         }
         
         .carousel-item.active {
@@ -358,6 +413,10 @@ function openWindow(title) {
           z-index: 2;
           border-color: rgba(255,255,255,0.22);
           box-shadow: 0 20px 40px rgba(0, 0, 0, 0.75);
+        }
+        /* Hover: only raise opacity a bit on unfocused items */
+        .carousel-item:not(.active):hover {
+          opacity: 1;
         }
         
         .carousel-item img {
@@ -373,7 +432,7 @@ function openWindow(title) {
         }
         
         .carousel-item .title {
-          padding: 10px 5px;
+          padding: 8px 6px;
           text-align: center;
           font-size: 14px;
           font-family: 'NokiaFC22', Arial, sans-serif;
@@ -386,20 +445,28 @@ function openWindow(title) {
           white-space: nowrap;
           overflow: hidden;
           text-overflow: ellipsis;
+          min-height: 32px;
+          display: flex;
+          align-items: center;
+          justify-content: center;
         }
-
+        
         .carousel-item .subtitle {
           margin-top: 2px;
           text-align: center;
           font-size: 11px;
           font-family: Arial, sans-serif;
-          color: #c0c0c0; /* slightly grey */
+          color: #c0c0c0;
           width: 100%;
           padding: 2px 0 0;
           box-sizing: border-box;
-          background: transparent; /* no extra backdrop */
+          background: transparent;
+          min-height: 20px;
+          display: flex;
+          align-items: center;
+          justify-content: center;
         }
-
+        
         /* Reflections */
         .reflection {
           content: '';
@@ -486,6 +553,7 @@ function openWindow(title) {
           display: flex;
           flex-direction: column;
           justify-content: center;
+          position: relative;
         }
         
         .music-details h2 {
@@ -506,23 +574,28 @@ function openWindow(title) {
         
         .play-button {
           position: absolute;
-          bottom: 10px;
           right: 20px;
-          padding: 8px 20px;
-          background: #4a90e2;
-          color: white;
-          border: none;
-          border-radius: 3px;
-          font-size: 14px;
-          font-family: 'NokiaFC22', Arial, sans-serif;
+          top: 50%;
+          transform: translateY(-50%);
+          display: inline-block;
+          padding: 10px 14px;
+          border-radius: 6px;
+          border: 1px solid #0b5ed7;
+          background: linear-gradient(#4da3ff,#1d76ff);
+          color: #fff;
+          text-decoration: none;
+          font-weight: 700;
+          box-shadow: 0 2px 6px rgba(0,0,0,0.15);
+          transition: transform .15s ease, box-shadow .15s ease, background .15s ease;
           cursor: pointer;
-          transition: all 0.2s;
           text-transform: uppercase;
           letter-spacing: 1px;
         }
         
         .play-button:hover {
-          background: #5a9ff2;
+          background: linear-gradient(#5bb0ff,#2b82ff);
+          transform: translateY(calc(-50% - 1px));
+          box-shadow: 0 4px 10px rgba(0,0,0,0.2);
         }
 
         /* In-window 3D player (not fixed; sits inside window) */
@@ -581,7 +654,7 @@ function openWindow(title) {
         <div class="music-details">
           <h2 id="current-title">Select a release</h2>
           <p id="current-description">Browse through the collection using the navigation buttons</p>
-          <button class="play-button" id="play-button">PLAY</button>
+          <button class="play-button" id="play-button">Play</button>
         </div>
 
         <!-- In-window player dock -->
@@ -777,19 +850,27 @@ function openWindow(title) {
             imgEl.addEventListener('load', () => { imgEl.style.opacity = '1'; }, { once: true });
           }
         }
-        // UI sounds
-        item.addEventListener('mouseenter', () => tryPlayUI(hoverSfx));
-        // Single click opens the album window
+        // No hover sound on mouseenter
+        item.addEventListener('mouseenter', () => {});
+        // Click behavior: non-active focuses; active opens
         item.addEventListener('click', () => {
-          tryPlayUI(selectSfx);
-          openWindow(release.title);
+          if (!item.classList.contains('active')) {
+            // focus this item
+            tryPlayUI(hoverSfx);
+            selectItem(index);
+          } else {
+            tryPlayUI(selectSfx);
+            openWindow(release.title);
+          }
         });
+        
         carouselTrack.appendChild(item);
         
         // Create dot
         const dot = document.createElement('button');
         dot.className = 'carousel-dot' + (index === 0 ? ' active' : '');
-        dot.addEventListener('click', () => selectItem(index));
+        dot.addEventListener('click', () => { tryPlayUI(hoverSfx); selectItem(index); });
+
         dotsContainer.appendChild(dot);
       });
       
@@ -809,7 +890,6 @@ function openWindow(title) {
     }
     
     function selectItem(index) {
-      tryPlayUI(selectSfx);
       currentIndex = (index + releases.length) % releases.length;
       updateCarousel();
       updateDetails();
@@ -826,13 +906,18 @@ function openWindow(title) {
       const margin = (parseFloat(cs.marginLeft) || 0) + (parseFloat(cs.marginRight) || 0);
       const gap = itemWidth + margin; // actual advance per item in the flex row
 
-      // Visual state: active vs inactive
+      // Visual state: active vs inactive + directional/edge classes
       items.forEach((item, index) => {
         // Remove any per-item transforms so flex layout remains predictable
         item.style.transform = '';
         item.style.opacity = index === currentIndex ? '1' : '0.6';
         item.style.zIndex = String(index === currentIndex ? 10 : 1);
         item.classList.toggle('active', index === currentIndex);
+        // Directional nudge classes
+        item.classList.toggle('pos-left', index < currentIndex);
+        item.classList.toggle('pos-right', index > currentIndex);
+        item.classList.toggle('edge-left', index === 0);
+        item.classList.toggle('edge-right', index === (items.length - 1));
       });
 
       // Update dots
@@ -1944,10 +2029,15 @@ function openWindow(title) {
         storeUiSoundEnabled = true;
         window.removeEventListener('pointerdown', enableStoreUiSoundsOnce);
         window.removeEventListener('keydown', enableStoreUiSoundsOnce);
+        try { storeWrap && storeWrap.removeEventListener('mousemove', enableStoreUiSoundsOnce); } catch {}
       }
       // Gate to satisfy autoplay policies (especially iOS Safari)
       window.addEventListener('pointerdown', enableStoreUiSoundsOnce, { once: true });
       window.addEventListener('keydown', enableStoreUiSoundsOnce, { once: true });
+      // Also arm on first mouse movement inside the Store area so hover can trigger without a click.
+      // Note: Some browsers may still require a click/keypress before audio plays due to autoplay policies.
+      const storeWrap = content.querySelector('.store-container');
+      if (storeWrap) storeWrap.addEventListener('mousemove', enableStoreUiSoundsOnce, { once: true });
 
       try {
         if (window.Howl) {
