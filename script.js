@@ -1935,6 +1935,47 @@ function openWindow(title) {
       const spinnerStart = (typeof performance !== 'undefined' && performance.now) ? performance.now() : Date.now();
       const MIN_SPIN_MS = 250; // faster: brief but noticeable
 
+      // --- UI sounds (scoped to Store item cards only) ---
+      // Use Howler (Web Audio) for low-latency overlapping playback; fallback to a small HTMLAudio pool
+      let playStoreHover = () => {};
+      let playStoreSelect = () => {};
+      let storeUiSoundEnabled = false;
+      function enableStoreUiSoundsOnce() {
+        storeUiSoundEnabled = true;
+        window.removeEventListener('pointerdown', enableStoreUiSoundsOnce);
+        window.removeEventListener('keydown', enableStoreUiSoundsOnce);
+      }
+      // Gate to satisfy autoplay policies (especially iOS Safari)
+      window.addEventListener('pointerdown', enableStoreUiSoundsOnce, { once: true });
+      window.addEventListener('keydown', enableStoreUiSoundsOnce, { once: true });
+
+      try {
+        if (window.Howl) {
+          const hoverHowl = new Howl({ src: ['hoversound.wav'], volume: 1, html5: false, pool: 6 });
+          const selectHowl = new Howl({ src: ['selectsound.wav'], volume: 1, html5: false, pool: 6 });
+          // Eagerly decode buffers to minimize first-play latency
+          try { hoverHowl.load(); } catch {}
+          try { selectHowl.load(); } catch {}
+          playStoreHover = () => { if (!storeUiSoundEnabled) return; try { hoverHowl.play(); } catch {} };
+          playStoreSelect = () => { if (!storeUiSoundEnabled) return; try { selectHowl.play(); } catch {} };
+        } else {
+          // Fallback: small round-robin pools to avoid cutting off overlapping plays
+          const hoverPool = Array.from({ length: 4 }, () => { const a = new Audio('hoversound.wav'); try { a.preload = 'auto'; a.load(); } catch {}; return a; });
+          const selectPool = Array.from({ length: 4 }, () => { const a = new Audio('selectsound.wav'); try { a.preload = 'auto'; a.load(); } catch {}; return a; });
+          let hi = 0, si = 0;
+          playStoreHover = () => {
+            if (!storeUiSoundEnabled) return;
+            const a = hoverPool[hi = (hi + 1) % hoverPool.length];
+            try { a.currentTime = 0; a.play().catch(()=>{}); } catch {}
+          };
+          playStoreSelect = () => {
+            if (!storeUiSoundEnabled) return;
+            const a = selectPool[si = (si + 1) % selectPool.length];
+            try { a.currentTime = 0; a.play().catch(()=>{}); } catch {}
+          };
+        }
+      } catch {}
+
       // Expose a readiness promise so music can wait until loaded
       let storeReadyResolve;
       const storeReadyPromise = new Promise(r => { storeReadyResolve = r; });
@@ -2357,6 +2398,13 @@ function openWindow(title) {
             if (product) openProductDetail(product, whodunitCdCard);
           });
         }
+
+        // Attach hover and select sounds to ALL product item cards (shop only)
+        const productCards = Array.from(grid.querySelectorAll('.product-item'));
+        productCards.forEach(card => {
+          card.addEventListener('mouseenter', () => playStoreHover());
+          card.addEventListener('click', () => playStoreSelect());
+        });
 
         // Add interactive 3D tilt on hover (skip if reduced motion)
         if (!reduceMotion) {
@@ -4277,6 +4325,19 @@ function openAlbumModal(coverSrc, downloadSrc) {
   const modal = document.getElementById('album-modal');
   if (!modal) return;
 
+  // Play swoosh-in sound (use Howler if available for low-latency)
+  try {
+    if (window.Howl) {
+      window.__swooshIn = window.__swooshIn || new Howl({ src: ['swooshin.wav'], volume: 1, html5: false, pool: 2 });
+      window.__swooshIn.load();
+      window.__swooshIn.play();
+    } else {
+      const a = new Audio('swooshin.wav');
+      try { a.preload = 'auto'; } catch {}
+      a.play().catch(()=>{});
+    }
+  } catch {}
+
   // Remove hidden class to show modal
   modal.classList.remove('hidden');
   
@@ -4354,6 +4415,18 @@ function openAlbumModal(coverSrc, downloadSrc) {
 function closeAlbumModal() {
   const modal = document.getElementById('album-modal');
   if (modal) {
+    // Play swoosh-out sound
+    try {
+      if (window.Howl) {
+        window.__swooshOut = window.__swooshOut || new Howl({ src: ['swooshout.wav'], volume: 1, html5: false, pool: 2 });
+        window.__swooshOut.load();
+        window.__swooshOut.play();
+      } else {
+        const a = new Audio('swooshout.wav');
+        try { a.preload = 'auto'; } catch {}
+        a.play().catch(()=>{});
+      }
+    } catch {}
     modal.classList.add('hidden');
   }
 }
@@ -4741,7 +4814,7 @@ function renderAlbumWindow(config) {
         grid-template-columns: 28px 1fr 56px;
         align-items: center;
         gap: 8px;
-        padding: 8px 12px
+        padding: 8px 12px;
         border-top: 1px solid rgba(0,0,0,0.06);
         transition: background 0.15s ease;
         cursor: pointer;
@@ -4764,7 +4837,7 @@ function renderAlbumWindow(config) {
       <div class="goodtrip-right">
         ${logoHtml}
         <div class="goodtrip-content-inner">
-          <img src="${config.modalCover ? config.modalCover : config.albumCover}" alt="${config.title} Album Cover" class="album-cover" onclick="${config.modal ? 'openAlbumModal()' : ''}" />
+          <img src="${config.modalCover ? config.modalCover : config.albumCover}" alt="${config.title} Album Cover" class="album-cover" onclick="${config.modal ? `openAlbumModal('${config.modalCover ? config.modalCover : config.albumCover}')` : ''}" />
           <div class="track-description" id="goodtrip-info-display" style="display:none"><strong>${config.title}</strong></div>
           <details class="album-tracklist">
             <summary class="tl-summary">Tracklist</summary>
@@ -4916,24 +4989,24 @@ function renderAlbumWindow(config) {
   }
 
   function startScrolling(text) {
+    // Switch to CSS animation for smoother, consistent performance across windows
     stopScrolling();
     scrollText1.textContent = text;
     scrollText2.textContent = text;
     const wrapperDiv = scrollContainer.querySelector('.scrolling-wrapper');
+    // Compute animation duration based on content width
     setTimeout(() => {
       const span1Width = scrollText1.offsetWidth;
       const spacing = 80;
       textWidth = span1Width + spacing;
-      scrollPos = 0;
-      function step() {
-        scrollPos += 1.2;
-        if (scrollPos >= textWidth) {
-          scrollPos = 0;
-        }
-        wrapperDiv.style.transform = `translateX(${-scrollPos}px)`;
-        animationFrameId = requestAnimationFrame(step);
-      }
-      animationFrameId = requestAnimationFrame(step);
+      // Pixels per second speed
+      const pxPerSec = 60; // adjust to taste
+      const durationSec = Math.max(4, textWidth / pxPerSec);
+      // Apply animation with dynamic duration
+      wrapperDiv.style.willChange = 'transform';
+      wrapperDiv.style.animation = `scroll-left ${durationSec}s linear infinite`;
+      // Ensure starting at zero transform
+      wrapperDiv.style.transform = 'translateX(0)';
     }, 0);
   }
 
