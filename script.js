@@ -969,11 +969,14 @@ function openWindow(title) {
         // No hover sound on mouseenter
         item.addEventListener('mouseenter', () => {});
         // Click behavior: non-active focuses; active opens
-        item.addEventListener('click', (e) => {
-          // Only handle clicks directly on the item, not on buttons inside it
-          if (e.target === item || e.target === item.querySelector('img')) {
-            currentIndex = index;
+        item.addEventListener('click', () => {
+          if (!item.classList.contains('active')) {
+            // focus this item
+            tryPlayUI(hoverSfx);
             selectItem(index);
+          } else {
+            tryPlayUI(selectSfx);
+            openWindow(release.title);
           }
         });
         
@@ -1014,9 +1017,6 @@ function openWindow(title) {
       const items = carouselTrack.querySelectorAll('.carousel-item');
       const dots = dotsContainer.querySelectorAll('.carousel-dot');
       if (!items.length) return;
-      
-      // Ensure currentIndex is within bounds
-      currentIndex = Math.max(0, Math.min(currentIndex, items.length - 1));
 
       const first = items[0];
       const itemWidth = first.offsetWidth || 200;
@@ -1168,14 +1168,6 @@ function openWindow(title) {
     createCarousel();
     // Ensure initial button state reflects the first item
     updatePlayButtonState();
-    // Trigger initial carousel update after a short delay to ensure DOM is ready
-    setTimeout(() => {
-      updateCarousel();
-      // Force a reflow and recenter after all assets are loaded
-      window.requestAnimationFrame(() => {
-        updateCarousel();
-      });
-    }, 100);
     // Recenter on window resize to keep the active card centered
     function __musicResizeHandler(){
       try { updateCarousel(); } catch {}
@@ -4782,10 +4774,9 @@ const albumConfigs = {
     logoShadow: true,
     trackInfoMap: {},
     platformLinks: [],
-    background: "#f0f0f0",
+    background: "#ffffff",
     leftBackground: "redbrick.jpg",
-    modal: true,
-    useStandardPlayer: true
+    modal: true
   },
   apple: {
     title: "apple",
@@ -4826,28 +4817,6 @@ const albumConfigs = {
     background: "graffitibg4.png",
     leftBackground: "brickwall.jpeg",
     modal: true
-  },
-  "Whodunit?": {
-    title: "Whodunit?",
-    playlist: [
-      { title: "whodunit", src: "uispeech/whodunit.mp3" }
-    ],
-    cassetteImages: {
-      default: "whodunitcd1.png",
-      playing: "whodunitcd2.webp",
-      paused: "whodunitcd1.png"
-    },
-    albumCover: "whodunit.webp",
-    logo: null,
-    logoShadow: false,
-    trackInfoMap: {
-      "whodunit": "<strong>whodunit</strong> - The mystery track that started it all."
-    },
-    platformLinks: [],
-    background: "#f0f0f0",
-    leftBackground: "whitebrick.jpg",
-    modal: true,
-    useStandardPlayer: true
   }
 };
 
@@ -4881,72 +4850,44 @@ function renderAlbumWindow(config) {
     logoHtml = `<div class="goodtrip-logo-wrapper"><img src="${config.logo}" alt="${config.title} Logo" class="goodtrip-logo" />${config.logoShadow ? '<div class="goodtrip-logo-shadow"></div>' : ''}</div>`;
   }
 
-  // Choose between standard player or cassette controls
-  let leftInnerHtml = '';
-  
-  if (config.useStandardPlayer) {
-    // Windows Media Player style interface
-    leftInnerHtml = `
-      <div class="album-art-container">
-        <img src="${config.albumCover}" alt="${config.title}" class="standard-album-art" />
-      </div>
-      <div class="wmp-player">
-        <div class="wmp-track-info">
-          <div class="wmp-track-title" id="goodtrip-track-title">Ready to play</div>
-        </div>
-        <div class="wmp-controls">
-          <button class="wmp-btn wmp-prev" id="goodtrip-rewind" title="Previous">⏮</button>
-          <button class="wmp-btn wmp-play" id="goodtrip-play" title="Play">▶</button>
-          <button class="wmp-btn wmp-pause" id="goodtrip-pause" title="Pause">⏸</button>
-          <button class="wmp-btn wmp-next" id="goodtrip-forward" title="Next">⏭</button>
-          <button class="wmp-btn wmp-stop" id="goodtrip-stop" title="Stop">⏹</button>
-          <div class="wmp-volume-container">
-            <button class="wmp-btn wmp-volume-btn" title="Volume">🔊</button>
-            <input type="range" class="wmp-volume-slider" id="wmp-volume" min="0" max="100" value="70">
-          </div>
+  // In the left-inner, render the LCD display and cassette controls
+  let leftInnerHtml = `
+    <div class="lcd-display">
+      <span id="goodtrip-track-title">Use cassette controls to play</span>
+      <div id="scrolling-container">
+        <div class="scrolling-wrapper">
+          <span id="scroll-text1"></span>
+          <span id="scroll-text2"></span>
         </div>
       </div>
-    `;
-  } else {
-    // Original cassette controls
-    leftInnerHtml = `
-      <div class="lcd-display">
-        <span id="goodtrip-track-title">Use cassette controls to play</span>
-        <div id="scrolling-container">
-          <div class="scrolling-wrapper">
-            <span id="scroll-text1"></span>
-            <span id="scroll-text2"></span>
-          </div>
-        </div>
+    </div>
+    <div class="cassette-wrapper">
+      <div class="cassette-inner">
+        <img
+          id="goodtrip-cassette-img"
+          src="${config.cassetteImages.default}"
+          alt="Cassette Player"
+          class="cassette-image"
+        />
+        <svg
+          viewBox="0 0 100 100"
+          preserveAspectRatio="xMidYMid meet"
+          class="cassette-overlay">
+          <rect id="goodtrip-rewind" x="38" y="75" width="12" height="12" fill="rgba(0,0,255,0.0)" pointer-events="auto" />
+          <rect id="goodtrip-play" x="26" y="75" width="12" height="12" fill="rgba(0,255,0,0.0)" pointer-events="auto" />
+          <rect id="goodtrip-pause" x="74" y="75" width="12" height="12" fill="rgba(255,255,0,0.0)" pointer-events="auto" />
+          <rect id="goodtrip-forward" x="50" y="75" width="12" height="12" fill="rgba(255,0,0,0.0)" pointer-events="auto" />
+        </svg>
       </div>
-      <div class="cassette-wrapper">
-        <div class="cassette-inner">
-          <img
-            id="goodtrip-cassette-img"
-            src="${config.cassetteImages.default}"
-            alt="Cassette Player"
-            class="cassette-image"
-          />
-          <svg
-            viewBox="0 0 100 100"
-            preserveAspectRatio="xMidYMid meet"
-            class="cassette-overlay">
-            <rect id="goodtrip-rewind" x="38" y="75" width="12" height="12" fill="rgba(0,0,255,0.0)" pointer-events="auto" />
-            <rect id="goodtrip-play" x="26" y="75" width="12" height="12" fill="rgba(0,255,0,0.0)" pointer-events="auto" />
-            <rect id="goodtrip-pause" x="74" y="75" width="12" height="12" fill="rgba(255,255,0,0.0)" pointer-events="auto" />
-            <rect id="goodtrip-forward" x="50" y="75" width="12" height="12" fill="rgba(255,0,0,0.0)" pointer-events="auto" />
-          </svg>
-        </div>
-      </div>
-      <div class="lcd-volume" id="volume-control">
-        <span class="bar" data-level="1"></span>
-        <span class="bar" data-level="2"></span>
-        <span class="bar" data-level="3"></span>
-        <span class="bar" data-level="4"></span>
-        <span class="bar" data-level="5"></span>
-      </div>
-    `;
-  }
+    </div>
+    <div class="lcd-volume" id="volume-control">
+      <span class="bar" data-level="1"></span>
+      <span class="bar" data-level="2"></span>
+      <span class="bar" data-level="3"></span>
+      <span class="bar" data-level="4"></span>
+      <span class="bar" data-level="5"></span>
+    </div>
+  `;
 
   content.innerHTML = `
     <style>
@@ -5120,101 +5061,6 @@ function renderAlbumWindow(config) {
       .album-tracklist .idx { color:#666; font-weight:700; text-align:right; }
       .album-tracklist .name { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
       .album-tracklist .len { color:#666; text-align:right; font-variant-numeric: tabular-nums; }
-      
-      /* Windows Media Player Styles */
-      .album-art-container {
-        width: 100%;
-        max-width: 200px;
-        margin-bottom: 15px;
-        display: flex;
-        justify-content: center;
-      }
-      .standard-album-art {
-        width: 100%;
-        height: auto;
-        border: 1px solid #666;
-        box-shadow: 0 2px 4px rgba(0,0,0,0.3);
-      }
-      .wmp-player {
-        width: 100%;
-        max-width: 320px;
-        background: linear-gradient(to bottom, #c8d4e6 0%, #9bb3d1 50%, #7a9bc7 51%, #6b8bc3 100%);
-        border: 1px solid #4a6b94;
-        border-radius: 3px;
-        padding: 8px;
-        box-shadow: 
-          inset 0 1px 0 rgba(255,255,255,0.3),
-          0 2px 4px rgba(0,0,0,0.2);
-      }
-      .wmp-track-info {
-        margin-bottom: 8px;
-      }
-      .wmp-track-title {
-        background: #000;
-        color: #fff;
-        font-family: 'Segoe UI', Tahoma, sans-serif;
-        font-size: 11px;
-        padding: 4px 6px;
-        text-align: left;
-        margin-bottom: 6px;
-        border: 1px inset #666;
-        min-height: 16px;
-        overflow: hidden;
-        white-space: nowrap;
-        text-overflow: ellipsis;
-      }
-      .wmp-controls {
-        display: flex;
-        align-items: center;
-        gap: 2px;
-        justify-content: space-between;
-      }
-      .wmp-btn {
-        width: 24px;
-        height: 20px;
-        background: linear-gradient(to bottom, #f0f4f8, #d8e2ed);
-        border: 1px outset #a0b0c0;
-        color: #000;
-        font-size: 10px;
-        cursor: pointer;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        user-select: none;
-        text-shadow: 0 1px 0 rgba(255,255,255,0.5);
-      }
-      .wmp-btn:hover {
-        background: linear-gradient(to bottom, #f8fcff, #e0eaf5);
-      }
-      .wmp-btn:active {
-        border: 1px inset #a0b0c0;
-        background: linear-gradient(to bottom, #d0dae5, #e8f2fd);
-      }
-      .wmp-volume-container {
-        display: flex;
-        align-items: center;
-        gap: 4px;
-      }
-      .wmp-volume-btn {
-        font-size: 8px;
-      }
-      .wmp-volume-slider {
-        width: 60px;
-        height: 12px;
-        background: linear-gradient(to bottom, #e8e8e8, #d0d0d0);
-        border: 1px inset #999;
-        outline: none;
-        cursor: pointer;
-        -webkit-appearance: none;
-      }
-      .wmp-volume-slider::-webkit-slider-thumb {
-        -webkit-appearance: none;
-        width: 12px;
-        height: 10px;
-        background: linear-gradient(to bottom, #f0f4f8, #d8e2ed);
-        border: 1px solid #a0b0c0;
-        cursor: pointer;
-      }
     </style>
     <div class="goodtrip-layout" data-title="${config.title}">
       <div class="goodtrip-left" data-title="${config.title}">
@@ -5469,26 +5315,6 @@ function renderAlbumWindow(config) {
     currentTrack = (currentTrack + 1) % playlist.length;
     updateTrack(currentTrack);
   });
-
-  content.querySelector('#goodtrip-stop').addEventListener('click', () => {
-    audio.pause();
-    audio.currentTime = 0;
-    updateDisplay('Stopped', false);
-    if (currentTypeInterval) clearTimeout(currentTypeInterval);
-    infoDisplay.innerHTML = "Track info";
-    infoDisplay.classList.add("default-info");
-    cassetteImg.src = cassetteImages.default;
-  });
-
-  // Volume slider functionality
-  const volumeSlider = content.querySelector('#wmp-volume');
-  if (volumeSlider) {
-    volumeSlider.addEventListener('input', () => {
-      audio.volume = volumeSlider.value / 100;
-    });
-    // Set initial volume
-    audio.volume = volumeSlider.value / 100;
-  }
 
   audio.addEventListener('ended', () => {
     if (currentTrack < playlist.length - 1) {
