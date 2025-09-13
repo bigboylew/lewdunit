@@ -4774,8 +4774,8 @@ const albumConfigs = {
     logoShadow: true,
     trackInfoMap: {},
     platformLinks: [],
-    background: "#ffffff",
-    leftBackground: "redbrick.jpg",
+    background: "",
+    leftBackground: "#FFC0CB",
     modal: true
   },
   apple: {
@@ -4850,44 +4850,94 @@ function renderAlbumWindow(config) {
     logoHtml = `<div class="goodtrip-logo-wrapper"><img src="${config.logo}" alt="${config.title} Logo" class="goodtrip-logo" />${config.logoShadow ? '<div class="goodtrip-logo-shadow"></div>' : ''}</div>`;
   }
 
-  // In the left-inner, render the LCD display and cassette controls
-  let leftInnerHtml = `
-    <div class="lcd-display">
-      <span id="goodtrip-track-title">Use cassette controls to play</span>
-      <div id="scrolling-container">
-        <div class="scrolling-wrapper">
-          <span id="scroll-text1"></span>
-          <span id="scroll-text2"></span>
+  // Choose interface based on title - WMP for demodisc, cassette for others
+  let leftInnerHtml = '';
+  
+  if (config.title === 'demodisc_01') {
+    // Windows Media Player style interface
+    leftInnerHtml = `
+      <div class="wmp-player">
+        <div class="wmp-header">
+          <div class="wmp-track-display">
+            <div class="wmp-track-number" id="wmp-track-number">1</div>
+            <div class="wmp-track-info">
+              <div class="wmp-track-title" id="wmp-track-title">crackers</div>
+              <div class="wmp-track-time" id="wmp-track-time">0:00 / 0:00</div>
+            </div>
+          </div>
+        </div>
+        <div class="wmp-controls-bar">
+          <div class="wmp-transport-controls">
+            <button class="wmp-control-btn wmp-prev-btn" id="goodtrip-rewind" title="Previous">
+              <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
+                <path d="M8 15A7 7 0 1 1 8 1a7 7 0 0 1 0 14zm0 1A8 8 0 1 0 8 0a8 8 0 0 0 0 16z"/>
+                <path d="M11.5 12L8 8.5 4.5 12V4l3.5 3.5L11.5 4v8z"/>
+              </svg>
+            </button>
+            <button class="wmp-control-btn wmp-play-btn" id="wmp-play-pause" title="Play">
+              <img src="play.webp" alt="Play" class="wmp-btn-icon" id="wmp-play-pause-icon">
+            </button>
+            <button class="wmp-control-btn wmp-next-btn" id="goodtrip-forward" title="Next">
+              <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
+                <path d="M8 15A7 7 0 1 1 8 1a7 7 0 0 1 0 14zm0 1A8 8 0 1 0 8 0a8 8 0 0 0 0 16z"/>
+                <path d="M4.5 12L8 8.5 11.5 12V4L8 7.5 4.5 4v8z"/>
+              </svg>
+            </button>
+          </div>
+          <div class="wmp-volume-controls">
+            <div class="wmp-volume-icon">
+              <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor">
+                <path d="M8 3a5 5 0 0 0-5 5v1h1a1 1 0 0 1 1 1v3a1 1 0 0 1-1 1H3a1 1 0 0 1-1-1V8a6 6 0 1 1 12 0v5a1 1 0 0 1-1 1h-1a1 1 0 0 1-1-1v-3a1 1 0 0 1 1-1h1V8a5 5 0 0 0-5-5z"/>
+              </svg>
+            </div>
+            <div class="wmp-volume-slider-track">
+              <input type="range" class="wmp-volume-slider" id="wmp-volume" min="0" max="100" value="80">
+              <div class="wmp-volume-fill"></div>
+            </div>
+          </div>
         </div>
       </div>
-    </div>
-    <div class="cassette-wrapper">
-      <div class="cassette-inner">
-        <img
-          id="goodtrip-cassette-img"
-          src="${config.cassetteImages.default}"
-          alt="Cassette Player"
-          class="cassette-image"
-        />
-        <svg
-          viewBox="0 0 100 100"
-          preserveAspectRatio="xMidYMid meet"
-          class="cassette-overlay">
-          <rect id="goodtrip-rewind" x="38" y="75" width="12" height="12" fill="rgba(0,0,255,0.0)" pointer-events="auto" />
-          <rect id="goodtrip-play" x="26" y="75" width="12" height="12" fill="rgba(0,255,0,0.0)" pointer-events="auto" />
-          <rect id="goodtrip-pause" x="74" y="75" width="12" height="12" fill="rgba(255,255,0,0.0)" pointer-events="auto" />
-          <rect id="goodtrip-forward" x="50" y="75" width="12" height="12" fill="rgba(255,0,0,0.0)" pointer-events="auto" />
-        </svg>
+    `;
+  } else {
+    // Original cassette controls for other albums
+    leftInnerHtml = `
+      <div class="lcd-display">
+        <span id="goodtrip-track-title">Use cassette controls to play</span>
+        <div id="scrolling-container">
+          <div class="scrolling-wrapper">
+            <span id="scroll-text1"></span>
+            <span id="scroll-text2"></span>
+          </div>
+        </div>
       </div>
-    </div>
-    <div class="lcd-volume" id="volume-control">
-      <span class="bar" data-level="1"></span>
-      <span class="bar" data-level="2"></span>
-      <span class="bar" data-level="3"></span>
-      <span class="bar" data-level="4"></span>
-      <span class="bar" data-level="5"></span>
-    </div>
-  `;
+      <div class="cassette-wrapper">
+        <div class="cassette-inner">
+          <img
+            id="goodtrip-cassette-img"
+            src="${config.cassetteImages.default}"
+            alt="Cassette Player"
+            class="cassette-image"
+          />
+          <svg
+            viewBox="0 0 100 100"
+            preserveAspectRatio="xMidYMid meet"
+            class="cassette-overlay">
+            <rect id="goodtrip-rewind" x="38" y="75" width="12" height="12" fill="rgba(0,0,255,0.0)" pointer-events="auto" />
+            <rect id="goodtrip-play" x="26" y="75" width="12" height="12" fill="rgba(0,255,0,0.0)" pointer-events="auto" />
+            <rect id="goodtrip-pause" x="74" y="75" width="12" height="12" fill="rgba(255,255,0,0.0)" pointer-events="auto" />
+            <rect id="goodtrip-forward" x="50" y="75" width="12" height="12" fill="rgba(255,0,0,0.0)" pointer-events="auto" />
+          </svg>
+        </div>
+      </div>
+      <div class="lcd-volume" id="volume-control">
+        <span class="bar" data-level="1"></span>
+        <span class="bar" data-level="2"></span>
+        <span class="bar" data-level="3"></span>
+        <span class="bar" data-level="4"></span>
+        <span class="bar" data-level="5"></span>
+      </div>
+    `;
+  }
 
   content.innerHTML = `
     <style>
@@ -5061,6 +5111,246 @@ function renderAlbumWindow(config) {
       .album-tracklist .idx { color:#666; font-weight:700; text-align:right; }
       .album-tracklist .name { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
       .album-tracklist .len { color:#666; text-align:right; font-variant-numeric: tabular-nums; }
+      
+      /* Windows Media Player 11/12 Styles */
+      .wmp-player {
+        width: 100%;
+        max-width: 320px;
+        background: linear-gradient(to bottom, #1a1a1a 0%, #0d0d0d 50%, #000000 100%);
+        border: 1px solid #333;
+        border-radius: 8px;
+        overflow: hidden;
+        box-shadow: 
+          0 4px 12px rgba(0,0,0,0.6),
+          inset 0 1px 0 rgba(255,255,255,0.1);
+      }
+      
+      .wmp-header {
+        background: linear-gradient(to bottom, #2a2a2a 0%, #1a1a1a 100%);
+        border-bottom: 1px solid #333;
+        padding: 12px 16px;
+      }
+      
+      .wmp-track-display {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+      }
+      
+      .wmp-track-number {
+        color: #ffffff;
+        font-family: 'Segoe UI', Tahoma, sans-serif;
+        font-size: 20px;
+        font-weight: bold;
+        text-shadow: 0 1px 2px rgba(0,0,0,0.8);
+        margin-right: 4px;
+      }
+      
+      .wmp-track-info {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        gap: 2px;
+      }
+      
+      .wmp-track-title {
+        color: #ffffff;
+        font-family: 'Segoe UI', Tahoma, sans-serif;
+        font-size: 15px;
+        font-weight: 600;
+        text-shadow: 0 1px 2px rgba(0,0,0,0.8);
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+      
+      .wmp-track-time {
+        color: #b0b0b0;
+        font-family: 'Segoe UI', Tahoma, sans-serif;
+        font-size: 11px;
+        text-shadow: 0 1px 1px rgba(0,0,0,0.6);
+      }
+      
+      .wmp-controls-bar {
+        background: linear-gradient(to bottom, #2d2d2d 0%, #1a1a1a 50%, #0d0d0d 100%);
+        padding: 12px 16px;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        border-top: 1px solid rgba(255,255,255,0.05);
+      }
+      
+      .wmp-transport-controls {
+        display: flex;
+        align-items: center;
+        gap: 4px;
+      }
+      
+      .wmp-control-btn {
+        width: 32px;
+        height: 32px;
+        background: linear-gradient(to bottom, 
+          rgba(255,255,255,0.15) 0%, 
+          rgba(255,255,255,0.08) 50%, 
+          rgba(255,255,255,0.02) 100%);
+        border: 1px solid rgba(255,255,255,0.2);
+        border-radius: 4px;
+        color: #ffffff;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        user-select: none;
+        transition: all 0.15s ease;
+        box-shadow: 
+          0 1px 3px rgba(0,0,0,0.3),
+          inset 0 1px 0 rgba(255,255,255,0.1);
+      }
+      
+      .wmp-play-btn {
+        width: 40px;
+        height: 40px;
+        background: linear-gradient(to bottom, 
+          rgba(74,144,226,0.9) 0%, 
+          rgba(53,122,189,0.9) 50%, 
+          rgba(44,90,160,0.9) 100%);
+        border: 1px solid #2c5aa0;
+        margin: 0 4px;
+        box-shadow: 
+          0 2px 6px rgba(0,0,0,0.4),
+          inset 0 1px 0 rgba(255,255,255,0.2);
+      }
+      
+      .wmp-btn-icon {
+        width: 24px;
+        height: 24px;
+        object-fit: contain;
+      }
+      
+      .wmp-control-btn:hover {
+        background: linear-gradient(to bottom, 
+          rgba(255,255,255,0.25) 0%, 
+          rgba(255,255,255,0.15) 50%, 
+          rgba(255,255,255,0.08) 100%);
+        border-color: rgba(255,255,255,0.3);
+        box-shadow: 
+          0 2px 4px rgba(0,0,0,0.4),
+          inset 0 1px 0 rgba(255,255,255,0.15);
+      }
+      
+      .wmp-play-btn:hover {
+        background: linear-gradient(to bottom, 
+          rgba(84,154,236,0.95) 0%, 
+          rgba(63,132,199,0.95) 50%, 
+          rgba(54,100,170,0.95) 100%);
+        box-shadow: 
+          0 3px 8px rgba(0,0,0,0.5),
+          inset 0 1px 0 rgba(255,255,255,0.25);
+      }
+      
+      .wmp-control-btn:active {
+        background: linear-gradient(to bottom, 
+          rgba(255,255,255,0.08) 0%, 
+          rgba(255,255,255,0.15) 50%, 
+          rgba(255,255,255,0.25) 100%);
+        box-shadow: 
+          inset 0 1px 3px rgba(0,0,0,0.3),
+          0 1px 2px rgba(0,0,0,0.2);
+        border-color: rgba(255,255,255,0.4);
+      }
+      
+      .wmp-volume-controls {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+      }
+      
+      .wmp-volume-icon {
+        color: #b0b0b0;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      }
+      
+      .wmp-volume-slider-track {
+        width: 80px;
+        height: 20px;
+        background: linear-gradient(to bottom, #0d0d0d 0%, #1a1a1a 100%);
+        border: 1px solid #333;
+        border-radius: 10px;
+        padding: 2px;
+        position: relative;
+        box-shadow: inset 0 1px 3px rgba(0,0,0,0.5);
+      }
+      
+      .wmp-volume-slider {
+        width: 100%;
+        height: 100%;
+        background: transparent;
+        border: none;
+        outline: none;
+        cursor: pointer;
+        -webkit-appearance: none;
+        appearance: none;
+        position: relative;
+        z-index: 2;
+      }
+      
+      .wmp-volume-slider::-webkit-slider-track {
+        width: 100%;
+        height: 6px;
+        background: transparent;
+        border: none;
+        border-radius: 3px;
+      }
+      
+      .wmp-volume-slider::-webkit-slider-thumb {
+        -webkit-appearance: none;
+        width: 16px;
+        height: 16px;
+        background: linear-gradient(to bottom, #ffffff 0%, #e0e0e0 100%);
+        border: 1px solid #999;
+        border-radius: 8px;
+        cursor: pointer;
+        margin-top: -5px;
+        box-shadow: 
+          0 1px 3px rgba(0,0,0,0.4),
+          inset 0 1px 0 rgba(255,255,255,0.8);
+      }
+      
+      .wmp-volume-slider::-moz-range-track {
+        width: 100%;
+        height: 6px;
+        background: transparent;
+        border: none;
+        border-radius: 3px;
+      }
+      
+      .wmp-volume-slider::-moz-range-thumb {
+        width: 16px;
+        height: 16px;
+        background: linear-gradient(to bottom, #ffffff 0%, #e0e0e0 100%);
+        border: 1px solid #999;
+        border-radius: 8px;
+        cursor: pointer;
+        margin-top: -5px;
+        box-shadow: 
+          0 1px 3px rgba(0,0,0,0.4),
+          inset 0 1px 0 rgba(255,255,255,0.8);
+      }
+      
+      .wmp-volume-fill {
+        position: absolute;
+        left: 2px;
+        top: 50%;
+        transform: translateY(-50%);
+        height: 6px;
+        background: linear-gradient(to right, #4a90e2 0%, #357abd 100%);
+        border-radius: 3px;
+        width: 64%; /* This will be updated by JavaScript */
+        pointer-events: none;
+        box-shadow: 0 0 4px rgba(74,144,226,0.5);
+      }
     </style>
     <div class="goodtrip-layout" data-title="${config.title}">
       <div class="goodtrip-left" data-title="${config.title}">
@@ -5068,7 +5358,6 @@ function renderAlbumWindow(config) {
           ${leftInnerHtml}
         </div>
       </div>
-
       <div class="goodtrip-resizer" role="separator" aria-orientation="vertical" tabindex="0" aria-label="Resize left panel"></div>
 
       <div class="goodtrip-right">
@@ -5256,7 +5545,7 @@ function renderAlbumWindow(config) {
       stopScrolling();
       scrollContainer.style.opacity = '1';
       scrollContainer.style.display = 'none';
-      titleDisplay.style.display = 'inline-block';
+      titleDisplay.style.display = 'block';
       titleDisplay.textContent = text;
     }
   }
@@ -5266,43 +5555,131 @@ function renderAlbumWindow(config) {
     const track = playlist[currentTrack];
     audio.src = track.src;
     audio.play();
-    updateDisplay(`Now Playing: ${track.title}`, true);
-    const info = trackInfoMap[track.title] || 'Now playing...';
-    typeText(infoDisplay, info);
-    cassetteImg.src = cassetteImages.playing;
+    
+    // Update WMP display for demodisc_01 or regular display for others
+    if (config.title === 'demodisc_01') {
+      const trackNumber = content.querySelector('#wmp-track-number');
+      const trackTitle = content.querySelector('#wmp-track-title');
+      const trackTime = content.querySelector('#wmp-track-time');
+      if (trackNumber) trackNumber.textContent = currentTrack + 1;
+      if (trackTitle) trackTitle.textContent = track.title;
+      if (trackTime) trackTime.textContent = '0:00 / 0:00';
+    } else {
+      updateDisplay(`Now Playing: ${track.title}`, true);
+      const info = trackInfoMap[track.title] || 'Now playing...';
+      typeText(infoDisplay, info);
+      cassetteImg.src = cassetteImages.playing;
+    }
+    
     playlistEnded = false;
     infoDisplay.classList.remove("default-info");
     refreshTracklistActive();
   }
 
-  content.querySelector('#goodtrip-play').addEventListener('click', () => {
-    setTimeout(() => {
-      infoDisplay.classList.remove("default-info");
-      if (playlistEnded) {
-        currentTrack = 0;
-        updateTrack(currentTrack);
-      } else if (!audio.src || audio.src === window.location.href) {
-        updateTrack(currentTrack);
-      } else if (audio.paused) {
-        audio.play();
-        updateDisplay(`Now Playing: ${playlist[currentTrack].title}`, true);
-        const info = trackInfoMap[playlist[currentTrack].title] || 'Now playing...';
-        typeText(infoDisplay, info);
-        cassetteImg.src = cassetteImages.playing;
+  // Handle play/pause toggle button for WMP interface
+  const playPauseBtn = content.querySelector('#wmp-play-pause');
+  const playPauseIcon = content.querySelector('#wmp-play-pause-icon');
+  
+  function updatePlayPauseButton(isPlaying) {
+    if (playPauseIcon) {
+      if (isPlaying) {
+        playPauseIcon.src = 'pause.webp';
+        playPauseIcon.alt = 'Pause';
+        playPauseBtn.title = 'Pause';
+      } else {
+        playPauseIcon.src = 'play.webp';
+        playPauseIcon.alt = 'Play';
+        playPauseBtn.title = 'Play';
       }
-    }, 120);
-  });
+    }
+  }
 
-  content.querySelector('#goodtrip-pause').addEventListener('click', () => {
-    setTimeout(() => {
-      audio.pause();
-      updateDisplay('Paused', false);
-      if (currentTypeInterval) clearTimeout(currentTypeInterval);
-      infoDisplay.innerHTML = "Track info";
-      infoDisplay.classList.add("default-info");
-      cassetteImg.src = cassetteImages.paused;
-    }, 100);
-  });
+  if (playPauseBtn) {
+    playPauseBtn.addEventListener('click', () => {
+      setTimeout(() => {
+        infoDisplay.classList.remove("default-info");
+        if (audio.paused || !audio.src || audio.src === window.location.href || playlistEnded) {
+          // Play
+          if (playlistEnded) {
+            currentTrack = 0;
+            updateTrack(currentTrack);
+          } else if (!audio.src || audio.src === window.location.href) {
+            updateTrack(currentTrack);
+          } else {
+            audio.play();
+            if (config.title === 'demodisc_01') {
+              const trackNumber = content.querySelector('#wmp-track-number');
+              const trackTitle = content.querySelector('#wmp-track-title');
+              const trackTime = content.querySelector('#wmp-track-time');
+              if (trackNumber) trackNumber.textContent = currentTrack + 1;
+              if (trackTitle) trackTitle.textContent = playlist[currentTrack].title;
+              if (trackTime) trackTime.textContent = '0:00 / 0:00';
+            } else {
+              updateDisplay(`Now Playing: ${playlist[currentTrack].title}`, true);
+              const info = trackInfoMap[playlist[currentTrack].title] || 'Now playing...';
+              typeText(infoDisplay, info);
+              cassetteImg.src = cassetteImages.playing;
+            }
+          }
+          updatePlayPauseButton(true);
+        } else {
+          // Pause
+          audio.pause();
+          if (config.title === 'demodisc_01') {
+            // Keep WMP display as is when paused
+          } else {
+            updateDisplay('Paused', false);
+            if (currentTypeInterval) clearTimeout(currentTypeInterval);
+            infoDisplay.innerHTML = "Track info";
+            infoDisplay.classList.add("default-info");
+            cassetteImg.src = cassetteImages.paused;
+          }
+          updatePlayPauseButton(false);
+        }
+      }, 120);
+    });
+  }
+
+  // Fallback for non-WMP interfaces (original play/pause buttons)
+  const oldPlayBtn = content.querySelector('#goodtrip-play');
+  const oldPauseBtn = content.querySelector('#goodtrip-pause');
+  
+  if (oldPlayBtn) {
+    oldPlayBtn.addEventListener('click', () => {
+      setTimeout(() => {
+        infoDisplay.classList.remove("default-info");
+        if (playlistEnded) {
+          currentTrack = 0;
+          updateTrack(currentTrack);
+        } else if (!audio.src || audio.src === window.location.href) {
+          updateTrack(currentTrack);
+        } else if (audio.paused) {
+          audio.play();
+          updateDisplay(`Now Playing: ${playlist[currentTrack].title}`, true);
+          const info = trackInfoMap[playlist[currentTrack].title] || 'Now playing...';
+          typeText(infoDisplay, info);
+          cassetteImg.src = cassetteImages.playing;
+        }
+      }, 120);
+    });
+  }
+
+  if (oldPauseBtn) {
+    oldPauseBtn.addEventListener('click', () => {
+      setTimeout(() => {
+        audio.pause();
+        updateDisplay('Paused', false);
+        if (currentTypeInterval) clearTimeout(currentTypeInterval);
+        infoDisplay.innerHTML = "Track info";
+        infoDisplay.classList.add("default-info");
+        cassetteImg.src = cassetteImages.paused;
+      }, 100);
+    });
+  }
+
+  // Update button state when audio events fire
+  audio.addEventListener('play', () => updatePlayPauseButton(true));
+  audio.addEventListener('pause', () => updatePlayPauseButton(false));
 
   content.querySelector('#goodtrip-rewind').addEventListener('click', () => {
     if (playlistEnded) playlistEnded = false;
@@ -5413,6 +5790,55 @@ function renderAlbumWindow(config) {
     updateBars(4);
   }
   setupVolumeControl();
+
+  // Add WMP volume slider functionality for demodisc_01
+  if (config.title === 'demodisc_01') {
+    const wmpVolumeSlider = content.querySelector('#wmp-volume');
+    const wmpVolumeFill = content.querySelector('.wmp-volume-fill');
+    
+    function updateVolumeDisplay(volume) {
+      if (wmpVolumeFill) {
+        wmpVolumeFill.style.width = `${volume * 100}%`;
+      }
+    }
+    
+    if (wmpVolumeSlider) {
+      wmpVolumeSlider.addEventListener('input', () => {
+        const volume = wmpVolumeSlider.value / 100;
+        audio.volume = volume;
+        updateVolumeDisplay(volume);
+      });
+      // Set initial volume
+      const initialVolume = wmpVolumeSlider.value / 100;
+      audio.volume = initialVolume;
+      updateVolumeDisplay(initialVolume);
+    }
+    
+    // Update time display during playback
+    const trackTime = content.querySelector('#wmp-track-time');
+    if (trackTime) {
+      audio.addEventListener('timeupdate', () => {
+        const current = audio.currentTime || 0;
+        const duration = audio.duration || 0;
+        const formatTime = (time) => {
+          const mins = Math.floor(time / 60);
+          const secs = Math.floor(time % 60);
+          return `${mins}:${secs.toString().padStart(2, '0')}`;
+        };
+        trackTime.textContent = `${formatTime(current)} / ${formatTime(duration)}`;
+      });
+      
+      audio.addEventListener('loadedmetadata', () => {
+        const duration = audio.duration || 0;
+        const formatTime = (time) => {
+          const mins = Math.floor(time / 60);
+          const secs = Math.floor(time % 60);
+          return `${mins}:${secs.toString().padStart(2, '0')}`;
+        };
+        trackTime.textContent = `0:00 / ${formatTime(duration)}`;
+      });
+    }
+  }
 
   if (/Mobi|Android|iPhone|iPad|iPod/i.test(navigator.userAgent)) {
     const volumeControl = content.querySelector('#volume-control');
