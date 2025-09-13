@@ -1,6 +1,72 @@
 let zIndex = 10;
 const isMobile = /Mobi|Android|iPhone|iPad|iPod|Touch/.test(navigator.userAgent);
 
+// Global button styles - must be at top level to work everywhere
+const globalButtonStyles = `
+<style>
+/* Purchase button: exact copy of play-button styling - GLOBAL */
+.purchase-btn {
+  display: inline-block !important;
+  position: relative !important;
+  padding: 6px 12px !important;
+  width: auto !important;
+  height: auto !important;
+  border-radius: 6px !important;
+  border: 1px solid rgba(255,255,255,0.35) !important;
+  background:
+    linear-gradient(to bottom, rgba(255,255,255,0.22), rgba(255,255,255,0.06)),
+    linear-gradient(to bottom, #4da3ff, #1d76ff) !important;
+  color: #fff !important;
+  text-decoration: none !important;
+  font-weight: 400 !important;
+  font-size: 14px !important;
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,0.5),
+    0 6px 16px rgba(0,0,0,0.25),
+    0 0 18px rgba(77,163,255,0.25) !important;
+  -webkit-backdrop-filter: blur(6px) saturate(140%) !important;
+  backdrop-filter: blur(6px) saturate(140%) !important;
+  transition: transform .15s ease, box-shadow .15s ease, background .15s ease !important;
+  cursor: pointer !important;
+  text-transform: none !important;
+  letter-spacing: 0.4px !important;
+  overflow: hidden !important;
+  white-space: nowrap !important;
+  text-shadow: 0 1px 2px rgba(0,0,0,0.45) !important;
+}
+.purchase-btn::before {
+  content: '';
+  position: absolute;
+  left: 0; right: 0;
+  top: 0;
+  height: 48%;
+  background: linear-gradient(to bottom, rgba(255,255,255,0.55), rgba(255,255,255,0.08));
+  pointer-events: none;
+}
+.purchase-btn:hover {
+  background:
+    linear-gradient(to bottom, rgba(255,255,255,0.26), rgba(255,255,255,0.1)),
+    linear-gradient(to bottom, #5bb0ff,#2b82ff) !important;
+  transform: translateY(-1px) !important;
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,0.6),
+    0 8px 18px rgba(0,0,0,0.28),
+    0 0 22px rgba(91,176,255,0.35) !important;
+}
+.purchase-btn[disabled] {
+  background: #777 !important;
+  border-color: #777 !important;
+  cursor: not-allowed !important;
+  color: #eaeaea !important;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.15) !important;
+  transform: none !important;
+}
+</style>
+`;
+
+// Inject global styles immediately
+document.head.insertAdjacentHTML('beforeend', globalButtonStyles);
+
 const sounds = {
   'sound-close': new Audio('https://files.catbox.moe/nmgith.mp3'),
   'sound-logon': new Audio('https://files.catbox.moe/7tkpiy.mp3'),
@@ -114,7 +180,7 @@ function initMusicPlayerUI() {
 function showMusicPlayer(fromImgEl) {
   initMusicPlayerUI(); const root = document.getElementById('music-player'); if (!root) return;
   if (fromImgEl && fromImgEl.getBoundingClientRect) {
-    try { const rect = fromImgEl.getBoundingClientRect(); const clone = fromImgEl.cloneNode(true); clone.className='player-fly-clone'; clone.style.left=rect.left+'px'; clone.style.top=rect.top+'px'; clone.style.width=rect.width+'px'; clone.style.height=rect.height+'px'; document.body.appendChild(clone); const target = root.getBoundingClientRect(); const tx=(target.left+20)-rect.left; const ty=(target.top+20)-rect.top; clone.animate([{transform:'translate(0,0) scale(1)',opacity:1},{transform:`translate(${tx}px, ${ty}px) scale(0.35)`,opacity:0.3}],{duration:500,easing:'cubic-bezier(0.175, 0.885, 0.32, 1.275)'}).addEventListener('finish',()=>{clone.remove();}); } catch {}
+    try { const rect = fromImgEl.getBoundingClientRect(); const clone = fromImgEl.cloneNode(true); clone.className='player-fly-clone'; clone.style.left=rect.left+'px'; clone.style.top=rect.top+'px'; clone.style.width=rect.width+'px'; clone.style.height=rect.height+'px'; document.body.appendChild(clone); const target = root.getBoundingClientRect(); const tx=(target.left+22)-rect.left; const ty=(target.top+20)-rect.top; clone.animate([{transform:'translate(0,0) scale(1)',opacity:1},{transform:`translate(${tx}px, ${ty}px) scale(0.35)`,opacity:0.3}],{duration:500,easing:'cubic-bezier(0.175, 0.885, 0.32, 1.275)'}).addEventListener('finish',()=>{clone.remove();}); } catch {}
   }
   root.classList.add('active');
 }
@@ -270,14 +336,14 @@ function openWindow(title) {
         if (skip) { /* no speech for album windows */ }
         else {
           const speechMap = {
-            'Recycle Bin': 'uispeech/recycle.wav',
-            'demodisc_01': 'uispeech/demodisc.wav',
-            'GOODTRIP': 'uispeech/goodtrip.wav',
-            'Music': 'uispeech/music.wav',
-            'Store': 'uispeech/store.wav',
-            'Whodunit?': 'uispeech/whodunit.wav',
+            'Recycle Bin': 'uispeech/recycle.mp3',
+            //'demodisc_01': 'uispeech/demodisc.mp3',
+            //'GOODTRIP': 'uispeech/goodtrip.mp3',
+            'Music': 'uispeech/music.mp3',
+            'Store': 'uispeech/store.mp3',
+            //'Whodunit?': 'uispeech/whodunit.mp3',
           };
-          const speechSrc = (speechMap[title] || speechMap[key]) || 'uispeech/info.wav';
+          const speechSrc = (speechMap[title] || speechMap[key]) || 'uispeech/info.mp3';
           const speechAudio = new Audio(speechSrc);
           speechAudio.preload = 'auto';
           speechAudio.muted = false;
@@ -306,17 +372,17 @@ function openWindow(title) {
   // Play window-specific UI speech once on open (skip album windows)
   try {
     const speechMap = {
-      'Recycle Bin': 'uispeech/recycle.wav',
-      'demodisc_01': 'uispeech/demodisc.wav',
-      'GOODTRIP': 'uispeech/goodtrip.wav',
-      'Music': 'uispeech/music.wav',
-      'Store': 'uispeech/store.wav',
-      'Whodunit?': 'uispeech/whodunit.wav',
+      'Recycle Bin': 'uispeech/recycle.mp3',
+      //'demodisc_01': 'uispeech/demodisc.mp3',
+      //'GOODTRIP': 'uispeech/goodtrip.mp3',
+      'Music': 'uispeech/music.mp3',
+      'Store': 'uispeech/store.mp3',
+      //'Whodunit?': 'uispeech/whodunit.mp3',
     };
     const key = String(title || '').trim().toLowerCase();
     const skip = key === 'demodisc_01' || key === 'goodtrip' || key === 'whodunit?';
     if (!skip) {
-      const speechSrc = (speechMap[title] || speechMap[key]) || 'uispeech/info.wav';
+      const speechSrc = (speechMap[title] || speechMap[key]) || 'uispeech/info.mp3';
       const speechAudio = new Audio(speechSrc);
       speechAudio.preload = 'auto';
       speechAudio.muted = false;
@@ -392,7 +458,7 @@ function openWindow(title) {
         .carousel-item {
           width: 220px;
           min-width: 220px;
-          height: 280px;
+          height: 252px; /* reduced to remove empty space at bottom after subtitle removal */
           margin: 0 8px;
           transition: all 0.28s ease, opacity 0.2s ease;
           cursor: pointer;
@@ -485,14 +551,15 @@ function openWindow(title) {
         
         .carousel-nav {
           position: absolute;
-          top: 50%;
-          transform: translateY(-50%);
-          width: 50px;
-          height: 100px;
+          top: 0;
+          bottom: 0;
+          transform: none;
+          width: 72px; /* wider backdrop + hitbox */
+          height: 100%;
           background: rgba(0, 0, 0, 0.5);
           border: none;
           color: white;
-          font-size: 32px;
+          font-size: 36px; /* slightly larger arrow */
           cursor: pointer;
           display: flex;
           align-items: center;
@@ -571,53 +638,83 @@ function openWindow(title) {
         
         .music-details p {
           margin: 2px 0 0 0;
-          color: #888;
-          font-size: 13px;
-          font-family: Arial, sans-serif;
+          color: #b0b0b0; /* slightly greyer sub text */
         }
-        
         .play-button {
           position: absolute;
           right: 20px;
           top: 50%;
           transform: translateY(-50%);
-          display: inline-block;
-          padding: 10px 14px;
+          padding: 8px 16px;
           border-radius: 6px;
-          border: 1px solid #0b5ed7;
-          background: linear-gradient(#4da3ff,#1d76ff);
+          /* Aero glass look */
+          border: 1px solid rgba(255,255,255,0.35);
+          background:
+            linear-gradient(to bottom, rgba(255,255,255,0.22), rgba(255,255,255,0.06)),
+            linear-gradient(to bottom, #4da3ff, #1d76ff);
           color: #fff;
           text-decoration: none;
-          font-weight: 700;
-          box-shadow: 0 2px 6px rgba(0,0,0,0.15);
+          font-weight: 400;
+          font-size: 14px;
+          box-shadow:
+            inset 0 1px 0 rgba(255,255,255,0.5),
+            0 6px 16px rgba(0,0,0,0.25),
+            0 0 18px rgba(77,163,255,0.25);
+          -webkit-backdrop-filter: blur(6px) saturate(140%);
+          backdrop-filter: blur(6px) saturate(140%);
           transition: transform .15s ease, box-shadow .15s ease, background .15s ease;
           cursor: pointer;
-          text-transform: uppercase;
-          letter-spacing: 1px;
+          text-transform: none;
+          letter-spacing: 0.4px;
+          overflow: hidden;
+          white-space: nowrap;
+          text-shadow: 0 1px 2px rgba(0,0,0,0.45);
+        }
+        .play-button::before {
+          content: '';
+          position: absolute;
+          left: 0; right: 0;
+          top: 0;
+          height: 48%;
+          background: linear-gradient(to bottom, rgba(255,255,255,0.55), rgba(255,255,255,0.08));
+          pointer-events: none;
         }
         
         .play-button:hover {
-          background: linear-gradient(#5bb0ff,#2b82ff);
+          background:
+            linear-gradient(to bottom, rgba(255,255,255,0.26), rgba(255,255,255,0.1)),
+            linear-gradient(to bottom, #5bb0ff,#2b82ff);
           transform: translateY(calc(-50% - 1px));
-          box-shadow: 0 4px 10px rgba(0,0,0,0.2);
+          box-shadow:
+            inset 0 1px 0 rgba(255,255,255,0.6),
+            0 8px 18px rgba(0,0,0,0.28),
+            0 0 22px rgba(91,176,255,0.35);
+        }
+
+        /* Disabled state for singles */
+        .play-button.disabled,
+        .play-button:disabled {
+          background: #777 !important;
+          border-color: #777 !important;
+          cursor: not-allowed !important;
+          color: #eaeaea !important;
+          box-shadow: 0 2px 6px rgba(0,0,0,0.15) !important;
+          transform: translateY(-50%) !important;
+          opacity: 0.9;
+          transition: none !important;
+        }
+        .play-button.disabled:hover,
+        .play-button:disabled:hover {
+          background: #777 !important;
+          transform: translateY(-50%) !important;
+          box-shadow: 0 2px 6px rgba(0,0,0,0.15) !important;
+          transition: none !important;
         }
 
         /* In-window 3D player (not fixed; sits inside window) */
-        .window-player {
-          position: absolute;
-          left: 20px;
-          right: 20px;
-          bottom: 10px;
-          height: 180px;
-          background: rgba(255,255,255,0.88);
-          -webkit-backdrop-filter: blur(6px);
-          backdrop-filter: blur(6px);
-          border-radius: 10px;
-          box-shadow: 0 10px 30px rgba(0,0,0,0.45);
-          color: #111;
-          display: none;
-        }
-        .window-player.active { display: flex; }
+        /* Hide in-window player entirely */
+        .window-player { display: none !important; }
+        .window-player.active { display: none !important; }
         .window-player .music-player-container { width: 100%; height: 100%; padding: 12px; display: flex; gap: 14px; align-items: center; box-sizing: border-box; }
         .window-player .album-art-3d { width: 120px; height: 120px; position: relative; transform-style: preserve-3d; transform: rotateY(14deg) rotateX(8deg); transition: transform 420ms ease; }
         .window-player:hover .album-art-3d { transform: rotateY(24deg) rotateX(10deg); }
@@ -658,7 +755,7 @@ function openWindow(title) {
         <div class="music-details">
           <h2 id="current-title">Select a release</h2>
           <p id="current-description">Browse through the collection using the navigation buttons</p>
-          <button class="play-button" id="play-button">Play</button>
+          <button class="play-button" id="play-button">Open</button>
         </div>
 
         <!-- In-window player dock -->
@@ -774,6 +871,24 @@ function openWindow(title) {
     const currentTitle = content.querySelector('#current-title');
     const currentDesc = content.querySelector('#current-description');
 
+    function updatePlayButtonState() {
+      const rel = releases[currentIndex];
+      if (!rel || !playButton) return;
+      const isSingle = String(rel.type || '').toLowerCase() === 'single';
+      playButton.textContent = 'Open';
+      if (isSingle) {
+        playButton.classList.add('disabled');
+        try { playButton.disabled = true; } catch {}
+        playButton.setAttribute('aria-disabled', 'true');
+        playButton.setAttribute('title', 'Singles do not open a window');
+      } else {
+        playButton.classList.remove('disabled');
+        try { playButton.disabled = false; } catch {}
+        playButton.removeAttribute('aria-disabled');
+        playButton.removeAttribute('title');
+      }
+    }
+
     // --- UI sounds (Safari-safe: only after first user interaction) ---
     let uiSoundEnabled = false;
     const hoverSfx = sounds['ui-hover'];
@@ -792,36 +907,36 @@ function openWindow(title) {
 
     const releases = [
       {
-        id: 'demodisc_01',
-        title: 'demodisc_01',
-        image: 'demodisccover.webp',
-        description: 'A collection of experimental tracks',
-        type: 'Album',
-        action: () => openWindow('demodisc_01')
-      },
-      {
-        id: 'apple',
-        title: 'apple',
-        image: 'applecover.webp',
-        description: 'Fresh sounds from the orchard',
-        type: 'Single',
-        action: () => openMusicSection('apple')
+        id: 'whodunit',
+        title: 'Whodunit?',
+        image: 'whodunit.webp',
+        description: '',
+        type: '8 tracks',
+        action: () => openWindow('Whodunit?')
       },
       {
         id: 'GOODTRIP',
         title: 'GOODTRIP',
         image: 'goodtrip.webp',
-        description: 'A journey through sound',
-        type: 'Album',
+        description: '',
+        type: '17 tracks',
         action: () => openWindow('GOODTRIP')
       },
       {
-        id: 'iso',
-        title: 'iso',
-        image: 'isocover.webp',
-        description: 'Isolated sounds and beats',
-        type: 'EP',
-        action: () => openMusicSection('iso')
+        id: 'apple',
+        title: 'apple',
+        image: 'applecover.webp',
+        description: '',
+        type: 'Single',
+        action: () => openMusicSection('apple')
+      },
+      {
+        id: 'demodisc_01',
+        title: 'demodisc_01',
+        image: 'demodisccover.webp',
+        description: '',
+        type: '7 tracks',
+        action: () => openWindow('demodisc_01')
       },
       
     ];
@@ -841,7 +956,6 @@ function openWindow(title) {
           <img src="${release.image}" alt="${release.title}" />
           <div class="reflection"></div>
           <div class="title">${release.title}</div>
-          <div class="subtitle">${release.type || ''}</div>
         `;
         // Fade in image after it loads to avoid flash
         const imgEl = item.querySelector('img');
@@ -877,6 +991,7 @@ function openWindow(title) {
       });
       
       updateDetails();
+      updatePlayButtonState();
       // Ensure initial layout is correct
       updateCarousel();
       // Recenter once images have their intrinsic sizes
@@ -895,6 +1010,7 @@ function openWindow(title) {
       currentIndex = (index + releases.length) % releases.length;
       updateCarousel();
       updateDetails();
+      updatePlayButtonState();
     }
     
     function updateCarousel() {
@@ -932,7 +1048,7 @@ function openWindow(title) {
       const containerWidth = viewport ? viewport.offsetWidth : (itemWidth + margin);
       const active = items[currentIndex];
       const targetCenter = active ? (active.offsetLeft + (active.offsetWidth || itemWidth) / 2) : 0;
-      const trackX = (containerWidth / 2) - targetCenter;
+      const trackX = (containerWidth / 2) - targetCenter + 20; // +8px fine-tune to center properly
       carouselTrack.style.transform = `translateX(${trackX}px)`;
     }
     
@@ -940,6 +1056,7 @@ function openWindow(title) {
       const release = releases[currentIndex];
       currentTitle.textContent = release.title;
       currentDesc.textContent = release.type || '';
+      updatePlayButtonState();
     }
     
     // Event listeners
@@ -958,8 +1075,12 @@ function openWindow(title) {
     });
     
     playButton.addEventListener('click', () => {
+      const rel = releases[currentIndex];
+      if (!rel) return;
+      const isSingle = String(rel.type || '').toLowerCase() === 'single';
+      if (isSingle) return; // disabled for singles
       tryPlayUI(selectSfx);
-      openWindow(releases[currentIndex].title);
+      openWindow(rel.title);
     });
     
     // Keyboard navigation
@@ -1045,7 +1166,14 @@ function openWindow(title) {
 
     // Initialize the carousel
     createCarousel();
-    
+    // Ensure initial button state reflects the first item
+    updatePlayButtonState();
+    // Recenter on window resize to keep the active card centered
+    function __musicResizeHandler(){
+      try { updateCarousel(); } catch {}
+    }
+    window.addEventListener('resize', __musicResizeHandler);
+
     // Expose handlers for inline onclick inside this window scope
     window.openMusicSection = openMusicSection;
     window.showMainMusic = showMainMusic;
@@ -1376,35 +1504,67 @@ function openWindow(title) {
         .preview { display: grid; grid-template-rows: 1fr auto; min-height: 0; }
         .artwork-wrap { display: flex; align-items: center; justify-content: center; padding: 6px 12px; border-bottom: 1px solid rgba(0,0,0,0.1); }
         .artwork { max-width: 80%; max-height: 100%; box-shadow: 0 2px 12px rgba(0,0,0,0.25); border-radius: 6px; }
-        .controls { padding: 10px 12px; display: grid; grid-template-columns: 1fr; gap: 8px; align-items: center; }
+        .controls { padding: 10px 12px; display: grid; grid-template-columns: 1fr; gap: 8px; align-items: start; }
         .controls .title { font-size: 13px; color: #333; }
         .controls audio { width: 100%; max-width: 640px; }
-        /* Download button styling aligned with Purchase button */
+        /* Download button: exact copy of play-button styling */
         .download-btn {
-          display: inline-block;
-          padding: 10px 14px;
-          border-radius: 6px;
-          border: 1px solid #0b5ed7;
-          background: linear-gradient(#4da3ff,#1d76ff);
+          display: inline-block !important;
+          position: relative !important;
+          padding: 6px 12px !important;
+          width: auto !important;
+          height: auto !important;
+          border-radius: 6px !important;
+          border: 1px solid rgba(255,255,255,0.35) !important;
+          background:
+            linear-gradient(to bottom, rgba(255,255,255,0.22), rgba(255,255,255,0.06)),
+            linear-gradient(to bottom, #4da3ff, #1d76ff) !important;
           color: #fff !important;
-          text-decoration: none;
-          font-weight: 700;
-          box-shadow: 0 2px 6px rgba(0,0,0,0.15);
-          transition: transform .15s ease, box-shadow .15s ease, background .15s ease;
+          text-decoration: none !important;
+          font-weight: 400 !important;
+          font-size: 14px !important;
+          box-shadow:
+            inset 0 1px 0 rgba(255,255,255,0.5),
+            0 6px 16px rgba(0,0,0,0.25),
+            0 0 18px rgba(77,163,255,0.25) !important;
+          -webkit-backdrop-filter: blur(6px) saturate(140%) !important;
+          backdrop-filter: blur(6px) saturate(140%) !important;
+          transition: transform .15s ease, box-shadow .15s ease, background .15s ease !important;
+          cursor: pointer !important;
+          text-transform: none !important;
+          letter-spacing: 0.4px !important;
+          overflow: hidden !important;
+          white-space: nowrap !important;
+          text-shadow: 0 1px 2px rgba(0,0,0,0.45) !important;
+        }
+        .download-btn::before {
+          content: '';
+          position: absolute;
+          left: 0; right: 0;
+          top: 0;
+          height: 48%;
+          background: linear-gradient(to bottom, rgba(255,255,255,0.55), rgba(255,255,255,0.08));
+          pointer-events: none;
         }
         .download-btn:hover {
-          background: linear-gradient(#5bb0ff,#2b82ff);
-          transform: translateY(-1px);
-          box-shadow: 0 4px 10px rgba(0,0,0,0.2);
+          background:
+            linear-gradient(to bottom, rgba(255,255,255,0.26), rgba(255,255,255,0.1)),
+            linear-gradient(to bottom, #5bb0ff,#2b82ff) !important;
+          transform: translateY(-1px) !important;
+          box-shadow:
+            inset 0 1px 0 rgba(255,255,255,0.6),
+            0 8px 18px rgba(0,0,0,0.28),
+            0 0 22px rgba(91,176,255,0.35) !important;
         }
         .download-btn[disabled] {
-          opacity: 0.5;
-          pointer-events: none;
-          cursor: not-allowed;
-          color: #eee !important;
-          transform: none;
-          box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+          background: #777 !important;
+          border-color: #777 !important;
+          cursor: not-allowed !important;
+          color: #eaeaea !important;
+          box-shadow: 0 2px 6px rgba(0,0,0,0.15) !important;
+          transform: none !important;
         }
+
 
         /* Mobile vertical stack: left panel above right preview */
         @media (max-width: 760px) {
@@ -1447,7 +1607,7 @@ function openWindow(title) {
             <div class="controls">
               <div class="title" id="file-title">Select a track</div>
               <audio id="rb-audio" controls preload="metadata"></audio>
-              <a id="rb-download" class="download-btn" href="#" download style="justify-self:start; font-size:12px; color:#0366d6; text-decoration:none;">Download</a>
+              <a id="rb-download" class="download-btn" href="#" download>Download</a>
             </div>
           </div>
           <!-- Native HTML5 audio controls for quick working player -->
@@ -2215,7 +2375,7 @@ function openWindow(title) {
                 <h2 style="margin:0 0 2px 0; font-size:28px;">${product.title}</h2>
                 <div style="margin:0 0 12px 0; font-size:15px; color:#666; text-transform: none;">${product.subtitle ?? (product.type || '')}</div>
                 <div style="font-weight:800; font-size:20px; color:#111; margin-bottom: 14px;">£${(product.price ?? 0).toFixed(2)}</div>
-                <a class="detail-buy" href="https://elasticstage.com/lew-dunit/releases/whodunit-album" target="_blank" rel="noopener" style="display:inline-block;padding:10px 14px;border-radius:6px;border:1px solid #0b5ed7;background:linear-gradient(#4da3ff,#1d76ff);color:#fff;text-decoration:none;font-weight:700;box-shadow:0 2px 6px rgba(0,0,0,0.15);">Purchase</a>
+                <a class="detail-buy purchase-btn" href="https://elasticstage.com/lew-dunit/releases/whodunit-album" target="_blank" rel="noopener">Purchase</a>
               </div>
               <div class="detail-desc" style="background:#fff;border:1px solid #ddd;border-radius:8px;padding:14px; color:#333; line-height:1.5; font-size:14px;">
                 <div style="font-weight:700; margin-bottom:6px;">Description</div>
@@ -4420,11 +4580,11 @@ function openAlbumModal(coverSrc, downloadSrc) {
   // Play swoosh-in sound (use Howler if available for low-latency)
   try {
     if (window.Howl) {
-      window.__swooshIn = window.__swooshIn || new Howl({ src: ['swooshin.wav'], volume: 1, html5: false, pool: 2 });
+      window.__swooshIn = window.__swooshIn || new Howl({ src: ['swooshin.mp3'], volume: 1, html5: false, pool: 2 });
       window.__swooshIn.load();
       window.__swooshIn.play();
     } else {
-      const a = new Audio('swooshin.wav');
+      const a = new Audio('swooshin.mp3');
       try { a.preload = 'auto'; } catch {}
       a.play().catch(()=>{});
     }
@@ -4476,31 +4636,8 @@ function openAlbumModal(coverSrc, downloadSrc) {
       document.body.removeChild(link);
     });
 
-    // Apply primary button styling and hover effect to modal download button
-    Object.assign(downloadBtn.style, {
-      display: 'inline-block',
-      padding: '10px 14px',
-      borderRadius: '6px',
-      border: '1px solid #0b5ed7',
-      background: 'linear-gradient(#4da3ff,#1d76ff)',
-      color: '#fff',
-      textDecoration: 'none',
-      fontWeight: '700',
-      boxShadow: '0 2px 6px rgba(0,0,0,0.15)',
-      transition: 'transform .15s ease, box-shadow .15s ease, background .15s ease'
-    });
-    const hoverIn = () => {
-      downloadBtn.style.background = 'linear-gradient(#5bb0ff,#2b82ff)';
-      downloadBtn.style.transform = 'translateY(-1px)';
-      downloadBtn.style.boxShadow = '0 4px 10px rgba(0,0,0,0.2)';
-    };
-    const hoverOut = () => {
-      downloadBtn.style.background = 'linear-gradient(#4da3ff,#1d76ff)';
-      downloadBtn.style.transform = 'none';
-      downloadBtn.style.boxShadow = '0 2px 6px rgba(0,0,0,0.15)';
-    };
-    downloadBtn.addEventListener('mouseenter', hoverIn);
-    downloadBtn.addEventListener('mouseleave', hoverOut);
+    // Ensure class present so global Aero CSS applies
+    downloadBtn.classList.add('download-btn');
   }
 }
 
@@ -4510,11 +4647,11 @@ function closeAlbumModal() {
     // Play swoosh-out sound
     try {
       if (window.Howl) {
-        window.__swooshOut = window.__swooshOut || new Howl({ src: ['swooshout.wav'], volume: 1, html5: false, pool: 2 });
+        window.__swooshOut = window.__swooshOut || new Howl({ src: ['swooshout.mp3'], volume: 1, html5: false, pool: 2 });
         window.__swooshOut.load();
         window.__swooshOut.play();
       } else {
-        const a = new Audio('swooshout.wav');
+        const a = new Audio('swooshout.mp3');
         try { a.preload = 'auto'; } catch {}
         a.play().catch(()=>{});
       }
@@ -4726,8 +4863,16 @@ function renderAlbumWindow(config) {
     </div>
     <div class="cassette-wrapper">
       <div class="cassette-inner">
-        <img id="goodtrip-cassette-img" src="${config.cassetteImages.default}" alt="Cassette Player" class="cassette-image" />
-        <svg viewBox="0 0 100 100" preserveAspectRatio="xMidYMid meet" class="cassette-overlay">
+        <img
+          id="goodtrip-cassette-img"
+          src="${config.cassetteImages.default}"
+          alt="Cassette Player"
+          class="cassette-image"
+        />
+        <svg
+          viewBox="0 0 100 100"
+          preserveAspectRatio="xMidYMid meet"
+          class="cassette-overlay">
           <rect id="goodtrip-rewind" x="38" y="75" width="12" height="12" fill="rgba(0,0,255,0.0)" pointer-events="auto" />
           <rect id="goodtrip-play" x="26" y="75" width="12" height="12" fill="rgba(0,255,0,0.0)" pointer-events="auto" />
           <rect id="goodtrip-pause" x="74" y="75" width="12" height="12" fill="rgba(255,255,0,0.0)" pointer-events="auto" />
